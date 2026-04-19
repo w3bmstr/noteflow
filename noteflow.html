@@ -1,0 +1,2188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NoteFlow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Lora:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+
+/* ===== THEMES ===== */
+:root{
+  --bg:#111218;--surface:#1a1b2e;--surface2:#22243a;--surface3:#2a2d48;
+  --border:#2e3050;--border2:#3a3e60;
+  --tx:#cbd0ea;--tx2:#7b83a8;--tx3:#464d72;--tx4:#2a2e50;
+  --accent:#7c9cf5;--accent-bg:rgba(124,156,245,.12);--accent-dk:#5578d8;
+  --warm:#e8965a;--green:#5bbf96;--red:#e87070;--yellow:#f0c062;--purple:#b57bee;
+  --sidebar-w:260px;--toolbar-h:42px;--status-h:26px;
+  --font-ui:'Instrument Sans',system-ui,sans-serif;
+  --font-serif:'Lora',Georgia,serif;
+  --font-mono:'JetBrains Mono','Fira Code',monospace;
+  --r:6px;--rl:10px;
+}
+[data-theme="light"]{
+  --bg:#f5f1eb;--surface:#ffffff;--surface2:#ede8e0;--surface3:#e0d8ce;
+  --border:#d8d0c4;--border2:#c4bab0;
+  --tx:#1c1810;--tx2:#6b5a48;--tx3:#9e8870;--tx4:#c8baa8;
+  --accent:#3060d0;--accent-bg:rgba(48,96,208,.1);--accent-dk:#2050c0;
+  --warm:#c04820;--green:#237a56;--red:#c02a3a;--yellow:#906010;--purple:#6040b8;
+}
+[data-theme="sepia"]{
+  --bg:#f0e4cc;--surface:#faf2e4;--surface2:#e8dcc4;--surface3:#ddd0b4;
+  --border:#c0a880;--border2:#a89060;
+  --tx:#281800;--tx2:#705030;--tx3:#907050;--tx4:#b89070;
+  --accent:#804010;--accent-bg:rgba(128,64,16,.12);--accent-dk:#603008;
+  --warm:#c05818;--green:#406020;--red:#901820;--yellow:#806010;--purple:#504080;
+}
+[data-theme="terminal"]{
+  --bg:#050905;--surface:#091409;--surface2:#0d1c0d;--surface3:#112011;
+  --border:#163016;--border2:#204020;
+  --tx:#20e820;--tx2:#18a818;--tx3:#106010;--tx4:#0a3a0a;
+  --accent:#40ff40;--accent-bg:rgba(64,255,64,.08);--accent-dk:#20cc20;
+  --warm:#ffff00;--green:#20e820;--red:#ff4040;--yellow:#ffff20;--purple:#80ff80;
+  --font-ui:'JetBrains Mono',monospace;
+}
+
+/* ===== LAYOUT ===== */
+body{font-family:var(--font-ui);font-size:13px;background:var(--bg);color:var(--tx);display:flex;flex-direction:column}
+#app{display:flex;height:100vh;overflow:hidden;position:relative}
+#lock-screen{position:fixed;inset:0;background:var(--bg);z-index:1000;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:20px}
+#lock-screen.hidden{display:none}
+.lock-icon{font-size:48px;line-height:1}
+.lock-title{font-size:20px;font-weight:700;color:var(--tx)}
+.lock-sub{font-size:13px;color:var(--tx2)}
+.pin-dots{display:flex;gap:10px;margin:8px 0}
+.pin-dot{width:12px;height:12px;border-radius:50%;border:2px solid var(--border2);background:transparent;transition:background .15s}
+.pin-dot.filled{background:var(--accent);border-color:var(--accent)}
+.pin-keypad{display:grid;grid-template-columns:repeat(3,56px);gap:8px}
+.pin-key{width:56px;height:56px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface2);color:var(--tx);font-size:18px;font-weight:600;cursor:pointer;transition:all .14s;font-family:var(--font-ui)}
+.pin-key:hover{background:var(--surface3);border-color:var(--accent)}
+.pin-key.del{font-size:14px}
+.pin-error{color:var(--red);font-size:12px;min-height:18px}
+
+/* ===== SIDEBAR ===== */
+#sidebar{width:var(--sidebar-w);min-width:180px;max-width:400px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;transition:width .2s}
+#sidebar.collapsed{width:0;min-width:0}
+#sidebar-header{padding:10px 12px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);flex-shrink:0}
+.app-logo{font-size:15px;font-weight:700;color:var(--tx);flex:1;letter-spacing:-.3px}
+.app-logo span{color:var(--accent)}
+.sb-btn{background:none;border:none;cursor:pointer;color:var(--tx3);font-size:16px;padding:4px 6px;border-radius:var(--r);transition:all .14s;line-height:1;font-family:var(--font-ui)}
+.sb-btn:hover{background:var(--surface2);color:var(--tx)}
+.sb-btn.primary{background:var(--accent);color:#fff;font-size:13px;font-weight:600;padding:5px 10px}
+.sb-btn.primary:hover{background:var(--accent-dk)}
+#search-bar{padding:8px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
+#search-input{width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:20px;padding:5px 12px;font-size:12px;color:var(--tx);outline:none;font-family:var(--font-ui)}
+#search-input:focus{border-color:var(--accent)}
+#search-input::placeholder{color:var(--tx3)}
+#sidebar-nav{padding:6px 8px;display:flex;flex-direction:column;gap:1px;border-bottom:1px solid var(--border);flex-shrink:0}
+.nav-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--r);cursor:pointer;color:var(--tx2);font-size:12.5px;font-weight:500;transition:all .14s;user-select:none}
+.nav-item:hover{background:var(--surface2);color:var(--tx)}
+.nav-item.active{background:var(--accent-bg);color:var(--accent)}
+.nav-icon{font-size:14px;width:16px;text-align:center;flex-shrink:0}
+.nav-count{margin-left:auto;font-size:10px;font-weight:700;padding:1px 6px;border-radius:99px;background:var(--surface3);color:var(--tx3)}
+#sidebar-sections{flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+#sidebar-sections::-webkit-scrollbar{width:3px}
+#sidebar-sections::-webkit-scrollbar-thumb{background:var(--border)}
+.sb-section{border-bottom:1px solid var(--border)}
+.sb-section-hdr{display:flex;align-items:center;padding:8px 12px;cursor:pointer;color:var(--tx3);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;user-select:none}
+.sb-section-hdr:hover{color:var(--tx2)}
+.sb-section-hdr .arrow{margin-left:auto;transition:transform .2s;font-size:9px}
+.sb-section-hdr.open .arrow{transform:rotate(90deg)}
+.sb-section-body{display:none;padding:4px 8px 8px}
+.sb-section-body.open{display:block}
+.folder-item{display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:var(--r);cursor:pointer;color:var(--tx2);font-size:12.5px;transition:all .14s;user-select:none}
+.folder-item:hover{background:var(--surface2);color:var(--tx)}
+.folder-item.active{background:var(--accent-bg);color:var(--accent)}
+.folder-del{margin-left:auto;opacity:0;font-size:10px;color:var(--red);padding:1px 4px;border-radius:3px}
+.folder-item:hover .folder-del{opacity:1}
+.folder-add{display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:var(--r);cursor:pointer;color:var(--tx3);font-size:11.5px;transition:all .14s}
+.folder-add:hover{color:var(--accent)}
+.tag-cloud{display:flex;flex-wrap:wrap;gap:4px;padding:2px 0}
+.tag-pill{padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;border:1.5px solid var(--border);color:var(--tx3);cursor:pointer;transition:all .14s}
+.tag-pill:hover,.tag-pill.active{border-color:var(--accent);color:var(--accent);background:var(--accent-bg)}
+#sort-bar{display:flex;align-items:center;padding:6px 12px;border-bottom:1px solid var(--border);gap:6px;flex-shrink:0}
+.sort-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3)}
+.sort-sel{background:none;border:none;color:var(--tx2);font-size:11.5px;font-family:var(--font-ui);cursor:pointer;outline:none}
+.sort-sel:hover{color:var(--tx)}
+#new-note-count{margin-left:auto;font-size:10px;color:var(--tx3)}
+#notes-list{overflow-y:auto;flex:1;padding:4px 0;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+#notes-list::-webkit-scrollbar{width:3px}
+#notes-list::-webkit-scrollbar-thumb{background:var(--border)}
+.note-item{padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s;position:relative}
+.note-item:hover{background:var(--surface2)}
+.note-item.active{background:var(--accent-bg);border-left:2px solid var(--accent)}
+.note-item.active{padding-left:10px}
+.ni-row{display:flex;align-items:center;gap:5px;margin-bottom:3px}
+.ni-title{font-size:13px;font-weight:600;color:var(--tx);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
+.ni-pin{font-size:11px;color:var(--yellow);flex-shrink:0}
+.ni-fav{font-size:11px;color:var(--red);flex-shrink:0}
+.ni-preview{font-size:11.5px;color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px;line-height:1.4}
+.ni-meta{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--tx3)}
+.ni-tag{padding:1px 6px;border-radius:99px;background:var(--surface3);color:var(--tx3);font-size:9.5px}
+.ni-actions{display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:2px;gap:1px;flex-direction:column}
+.note-item:hover .ni-actions{display:flex}
+.ni-act{background:none;border:none;cursor:pointer;font-size:10px;padding:3px 6px;color:var(--tx3);border-radius:4px;font-family:var(--font-ui);white-space:nowrap}
+.ni-act:hover{background:var(--surface3);color:var(--tx)}
+.ni-act.danger:hover{background:rgba(232,112,112,.15);color:var(--red)}
+.note-item-trash .ni-title{color:var(--tx3);text-decoration:line-through}
+
+/* ===== RESIZE HANDLE ===== */
+#resize-handle{width:4px;cursor:col-resize;background:transparent;flex-shrink:0;transition:background .2s}
+#resize-handle:hover{background:var(--accent)}
+
+/* ===== EDITOR PANE ===== */
+#editor-pane{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+#toolbar{background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;padding:0 8px}
+.toolbar-row{display:flex;align-items:center;gap:1px;height:var(--toolbar-h);flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+.toolbar-row::-webkit-scrollbar{display:none}
+.tb-sep{width:1px;height:20px;background:var(--border);flex-shrink:0;margin:0 3px}
+.tb-btn{background:none;border:none;cursor:pointer;color:var(--tx3);font-size:13px;padding:5px 8px;border-radius:var(--r);transition:all .14s;line-height:1;white-space:nowrap;font-family:var(--font-ui);font-weight:500;flex-shrink:0}
+.tb-btn:hover{background:var(--surface2);color:var(--tx)}
+.tb-btn.active,.tb-btn.on{background:var(--accent-bg);color:var(--accent)}
+.tb-btn.danger:hover{background:rgba(232,112,112,.15);color:var(--red)}
+.tb-btn b{font-weight:800}
+.tb-btn i{font-style:italic}
+.tb-btn u{text-decoration:underline}
+.tb-sel{background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--r);padding:3px 6px;font-size:11.5px;color:var(--tx);outline:none;font-family:var(--font-ui);cursor:pointer;max-width:130px;flex-shrink:0}
+.tb-sel:focus{border-color:var(--accent)}
+.tb-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);padding:0 4px;flex-shrink:0}
+.color-swatch{width:22px;height:22px;border-radius:50%;border:2px solid var(--border);cursor:pointer;flex-shrink:0;transition:transform .14s}
+.color-swatch:hover{transform:scale(1.15)}
+.tb-dropdown{position:relative;flex-shrink:0}
+.tb-dropdown-menu{position:absolute;top:calc(100% + 4px);left:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:4px;z-index:200;min-width:120px;display:none;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.tb-dropdown.open .tb-dropdown-menu{display:block}
+.tb-dropdown-menu button{display:block;width:100%;text-align:left;background:none;border:none;padding:6px 10px;font-size:12.5px;color:var(--tx2);cursor:pointer;border-radius:var(--r);font-family:var(--font-ui);transition:all .14s}
+.tb-dropdown-menu button:hover{background:var(--surface2);color:var(--tx)}
+.tb-dropdown-menu .menu-sep{height:1px;background:var(--border);margin:4px 0}
+
+/* NOTE TITLE BAR */
+#note-titlebar{padding:10px 20px 6px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--surface)}
+#note-title{width:100%;background:none;border:none;font-size:21px;font-weight:700;color:var(--tx);outline:none;font-family:var(--font-ui);letter-spacing:-.3px;line-height:1.2}
+#note-title::placeholder{color:var(--tx3)}
+#note-meta-bar{display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap}
+.nm-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:10.5px;font-weight:600;background:var(--surface2);color:var(--tx2);cursor:pointer;border:1.5px solid transparent;transition:all .14s}
+.nm-badge:hover{border-color:var(--accent);color:var(--accent)}
+.nm-add{color:var(--tx3);font-size:11px;cursor:pointer;padding:2px 6px;border-radius:99px;transition:all .14s}
+.nm-add:hover{color:var(--accent)}
+#word-goal-mini{display:flex;align-items:center;gap:6px;margin-left:auto}
+.wg-label{font-size:10px;color:var(--tx3);white-space:nowrap}
+.wg-bar{width:80px;height:5px;background:var(--surface3);border-radius:99px;overflow:hidden}
+.wg-fill{height:100%;background:var(--accent);border-radius:99px;transition:width .4s}
+.wg-fill.done{background:var(--green)}
+
+/* EDITOR AREA */
+#editor-scroll{flex:1;overflow-y:auto;background:var(--bg);scrollbar-width:thin;scrollbar-color:var(--border) transparent;display:flex;justify-content:center}
+#editor-scroll::-webkit-scrollbar{width:5px}
+#editor-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px}
+#editor-paper{width:100%;max-width:860px;padding:28px 40px 60px;min-height:100%}
+#editor{outline:none;min-height:300px;line-height:1.7;color:var(--tx);caret-color:var(--accent)}
+#editor:empty::before{content:attr(data-placeholder);color:var(--tx3);pointer-events:none;font-style:italic}
+#editor mark.find-match{background:rgba(240,192,98,.35);color:inherit;border-radius:2px}
+#editor mark.find-match.current{background:var(--yellow);color:#111}
+#editor ul{padding-left:1.5em;list-style:disc}
+#editor ol{padding-left:1.5em;list-style:decimal}
+#editor blockquote{border-left:3px solid var(--accent);padding-left:14px;color:var(--tx2);font-style:italic;margin:8px 0}
+#editor code{background:var(--surface2);padding:1px 6px;border-radius:4px;font-family:var(--font-mono);font-size:.9em}
+#editor pre{background:var(--surface2);padding:12px;border-radius:var(--r);font-family:var(--font-mono);font-size:.88em;overflow-x:auto;margin:8px 0}
+#editor hr{border:none;border-top:1px solid var(--border2);margin:14px 0}
+#editor a{color:var(--accent);text-decoration:underline}
+#editor h1{font-size:1.9em;font-weight:700;color:var(--tx);margin-bottom:.4em;letter-spacing:-.3px}
+#editor h2{font-size:1.5em;font-weight:700;color:var(--tx);margin-bottom:.35em}
+#editor h3{font-size:1.2em;font-weight:600;color:var(--tx);margin-bottom:.3em}
+#editor p{margin-bottom:.5em}
+.check-li{display:flex;align-items:flex-start;gap:8px;padding:2px 0}
+.check-li input[type=checkbox]{margin-top:3px;accent-color:var(--accent);cursor:pointer;width:14px;height:14px}
+.check-li.checked span{text-decoration:line-through;color:var(--tx3)}
+
+/* ===== STATUS BAR ===== */
+#status-bar{height:var(--status-h);background:var(--surface);border-top:1px solid var(--border);display:flex;align-items:center;padding:0 12px;gap:12px;flex-shrink:0;font-size:11px;color:var(--tx3);overflow:hidden}
+#status-bar.hidden{display:none}
+.sb-item{white-space:nowrap;display:flex;align-items:center;gap:3px}
+.sb-sep{width:1px;height:12px;background:var(--border);flex-shrink:0}
+#sb-autosave{margin-left:auto;display:flex;align-items:center;gap:4px}
+.sb-dot{width:6px;height:6px;border-radius:50%}
+.sb-dot.saved{background:var(--green)}
+.sb-dot.unsaved{background:var(--yellow)}
+.sb-dot.saving{background:var(--accent);animation:pulse .6s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+#sb-wg{flex:1;display:flex;align-items:center;gap:6px;max-width:180px}
+.sb-wg-bar{flex:1;height:3px;background:var(--surface3);border-radius:99px;overflow:hidden}
+.sb-wg-fill{height:100%;border-radius:99px;background:var(--accent);transition:width .5s}
+.sb-wg-fill.done{background:var(--green)}
+
+/* ===== PREVIEW PANE ===== */
+#preview-pane{width:45%;min-width:280px;max-width:600px;border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;background:var(--surface)}
+#preview-pane.hidden{display:none}
+#preview-header{padding:8px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0}
+.preview-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--tx3);flex:1}
+#preview-scroll{flex:1;overflow-y:auto;padding:20px 24px;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+#preview-scroll::-webkit-scrollbar{width:4px}
+#preview-scroll::-webkit-scrollbar-thumb{background:var(--border)}
+#preview-body{line-height:1.75;color:var(--tx);font-size:14px}
+#preview-body h1{font-size:1.8em;font-weight:700;margin:.8em 0 .4em;letter-spacing:-.3px}
+#preview-body h2{font-size:1.4em;font-weight:700;margin:.7em 0 .35em}
+#preview-body h3{font-size:1.15em;font-weight:600;margin:.6em 0 .3em}
+#preview-body p{margin:.5em 0}
+#preview-body code{background:var(--surface2);padding:1px 5px;border-radius:3px;font-family:var(--font-mono);font-size:.88em}
+#preview-body pre{background:var(--surface2);padding:12px;border-radius:var(--r);overflow-x:auto;margin:10px 0}
+#preview-body pre code{background:none;padding:0}
+#preview-body blockquote{border-left:3px solid var(--accent);padding-left:12px;color:var(--tx2);margin:10px 0}
+#preview-body ul{padding-left:1.5em;margin:.5em 0;list-style:disc}
+#preview-body ol{padding-left:1.5em;margin:.5em 0}
+#preview-body li{margin:.2em 0}
+#preview-body a{color:var(--accent)}
+#preview-body hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+#preview-body strong{font-weight:700}
+#preview-body em{font-style:italic}
+#preview-body table{width:100%;border-collapse:collapse;margin:.6em 0;font-size:.93em}
+#preview-body th,#preview-body td{padding:6px 10px;border:1px solid var(--border);text-align:left}
+#preview-body th{background:var(--surface2);font-weight:600}
+#preview-body input[type=checkbox]{accent-color:var(--accent);margin-right:5px}
+
+/* ===== MODALS ===== */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(3px)}
+.modal-overlay.hidden{display:none}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:24px;width:520px;max-width:95vw;max-height:85vh;overflow-y:auto;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.modal.sm{width:380px}
+.modal.lg{width:700px}
+.modal-title{font-size:16px;font-weight:700;color:var(--tx);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.modal-close{position:absolute;top:14px;right:14px;background:none;border:none;cursor:pointer;color:var(--tx3);font-size:18px;padding:4px;border-radius:var(--r);transition:all .14s}
+.modal-close:hover{background:var(--surface2);color:var(--tx)}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);margin-bottom:5px}
+.field input,.field textarea,.field select{width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--r);padding:7px 10px;font-size:13px;color:var(--tx);outline:none;font-family:var(--font-ui)}
+.field input:focus,.field textarea:focus,.field select:focus{border-color:var(--accent)}
+.field textarea{resize:vertical;min-height:80px}
+.field .row{display:flex;gap:8px;align-items:center}
+.field .row input{flex:1}
+.check-field{display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--tx2);font-size:13px;padding:6px 0}
+.check-field input[type=checkbox]{accent-color:var(--accent);width:15px;height:15px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:var(--r);font-size:12.5px;font-weight:600;cursor:pointer;border:none;transition:all .14s;font-family:var(--font-ui);white-space:nowrap}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-dk)}
+.btn-ghost{background:transparent;border:1.5px solid var(--border);color:var(--tx2)}
+.btn-ghost:hover{background:var(--surface2);color:var(--tx)}
+.btn-danger{background:transparent;border:1.5px solid var(--red);color:var(--red)}
+.btn-danger:hover{background:rgba(232,112,112,.12)}
+.btn-sm{padding:4px 10px;font-size:11.5px}
+
+/* FIND/REPLACE */
+#modal-find .modal{width:440px}
+.fr-row{display:flex;gap:6px;align-items:center;margin-bottom:8px}
+.fr-input{flex:1;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--r);padding:6px 10px;font-size:13px;color:var(--tx);outline:none;font-family:var(--font-ui)}
+.fr-input:focus{border-color:var(--accent)}
+.fr-opts{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.fr-opt{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--tx2);cursor:pointer}
+.fr-opt input{accent-color:var(--accent)}
+.fr-nav{display:flex;gap:4px}
+.fr-count{font-size:11px;color:var(--tx3);align-self:center;white-space:nowrap}
+.match-highlight{background:rgba(240,192,98,.25);border-radius:2px;padding:0 1px}
+
+/* SETTINGS */
+.settings-tabs{display:flex;gap:2px;margin-bottom:16px;background:var(--surface2);padding:3px;border-radius:var(--r)}
+.st-tab{flex:1;padding:6px;text-align:center;border-radius:calc(var(--r) - 1px);cursor:pointer;font-size:12px;font-weight:600;color:var(--tx2);transition:all .14s;border:none;background:none;font-family:var(--font-ui)}
+.st-tab.active{background:var(--surface);color:var(--accent);box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.settings-panel{display:none}
+.settings-panel.active{display:block}
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)}
+.setting-row:last-child{border-bottom:none}
+.setting-label{font-size:13px;color:var(--tx)}
+.setting-sub{font-size:11px;color:var(--tx3);margin-top:1px}
+.setting-control input[type=range]{accent-color:var(--accent)}
+.setting-control select{background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--r);padding:4px 6px;font-size:12px;color:var(--tx);font-family:var(--font-ui);outline:none}
+.toggle{position:relative;width:36px;height:20px;cursor:pointer}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;inset:0;background:var(--border2);border-radius:99px;transition:.2s}
+.toggle-slider::before{content:'';position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;top:3px;left:3px;transition:.2s}
+.toggle input:checked+.toggle-slider{background:var(--accent)}
+.toggle input:checked+.toggle-slider::before{left:19px}
+.theme-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:8px 0}
+.theme-card{border:2px solid var(--border);border-radius:var(--r);padding:8px;cursor:pointer;transition:all .14s;text-align:center}
+.theme-card.active{border-color:var(--accent)}
+.theme-preview{height:30px;border-radius:4px;margin-bottom:5px}
+.theme-name{font-size:10px;font-weight:600;color:var(--tx2)}
+
+/* WORD FREQ */
+.wf-bar-wrap{margin-bottom:6px}
+.wf-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.wf-word{font-size:12.5px;color:var(--tx);min-width:80px;font-weight:500}
+.wf-bar{flex:1;height:8px;background:var(--surface2);border-radius:99px;overflow:hidden}
+.wf-fill{height:100%;background:var(--accent);border-radius:99px}
+.wf-count{font-size:11px;color:var(--tx3);min-width:28px;text-align:right}
+
+/* TEMPLATES */
+.tmpl-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tmpl-card{background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--r);padding:12px;cursor:pointer;transition:all .14s}
+.tmpl-card:hover{border-color:var(--accent);background:var(--accent-bg)}
+.tmpl-icon{font-size:22px;margin-bottom:6px}
+.tmpl-name{font-size:13px;font-weight:600;color:var(--tx)}
+.tmpl-desc{font-size:11px;color:var(--tx3);margin-top:3px;line-height:1.4}
+
+/* NOTE PROPS */
+.tags-input-wrap{display:flex;flex-wrap:wrap;gap:5px;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--r);padding:5px 8px;cursor:text;min-height:36px;align-items:center}
+.tags-input-wrap:focus-within{border-color:var(--accent)}
+.tag-item{background:var(--surface3);border-radius:99px;padding:1px 8px;font-size:11px;color:var(--tx2);display:flex;align-items:center;gap:4px}
+.tag-rm{cursor:pointer;color:var(--tx3);font-size:12px;line-height:1}
+.tag-rm:hover{color:var(--red)}
+.tags-input{border:none;background:none;outline:none;font-size:12px;color:var(--tx);font-family:var(--font-ui);flex:1;min-width:80px}
+.color-picker-row{display:flex;gap:8px;margin-top:6px}
+.note-color-dot{width:24px;height:24px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .14s}
+.note-color-dot.active{border-color:var(--tx)}
+.note-color-dot:hover{transform:scale(1.15)}
+
+/* TOAST */
+#toast{position:fixed;bottom:20px;right:20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:10px 16px;font-size:12.5px;font-weight:500;z-index:900;box-shadow:0 8px 24px rgba(0,0,0,.3);display:flex;align-items:center;gap:8px;transform:translateY(80px);opacity:0;transition:all .25s ease;max-width:300px}
+#toast.show{transform:translateY(0);opacity:1}
+#toast.ok{border-left:3px solid var(--green)}
+#toast.warn{border-left:3px solid var(--yellow)}
+#toast.err{border-left:3px solid var(--red)}
+
+/* FULLSCREEN */
+#app.fullscreen #sidebar,#app.fullscreen #resize-handle{display:none}
+#app.fullscreen #editor-pane{width:100%}
+#app.fullscreen #toolbar{display:none}
+#app.fullscreen.show-toolbar #toolbar{display:block}
+
+/* WRITING MODE */
+#app.zen #sidebar,#app.zen #resize-handle,#app.zen #toolbar,#app.zen #status-bar,#app.zen #note-titlebar{opacity:0;pointer-events:none;transition:opacity .3s}
+#app.zen:hover #sidebar,#app.zen:hover #resize-handle,#app.zen:hover #toolbar,#app.zen:hover #status-bar,#app.zen:hover #note-titlebar{opacity:.25}
+#app.zen #editor-paper{max-width:680px}
+
+/* EMPTY STATE */
+#empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--tx3);text-align:center;padding:40px}
+#empty-state.hidden{display:none}
+.es-icon{font-size:48px;line-height:1;margin-bottom:4px}
+.es-title{font-size:16px;font-weight:600;color:var(--tx2)}
+.es-sub{font-size:13px;max-width:260px;line-height:1.5}
+.es-btn{margin-top:8px}
+
+/* SCROLLBAR for terminal theme */
+[data-theme="terminal"] *::-webkit-scrollbar-thumb{background:var(--border2)}
+[data-theme="terminal"] .note-item.active{border-left-color:var(--accent)}
+
+@media(max-width:680px){
+  #sidebar{position:absolute;top:0;bottom:0;left:0;z-index:100;transform:translateX(-100%);transition:transform .25s}
+  #sidebar.mobile-open{transform:translateX(0)}
+  #resize-handle{display:none}
+  #editor-paper{padding:16px 18px 40px}
+  .modal{max-width:95vw}
+  .tmpl-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body data-theme="dark">
+
+<!-- LOCK SCREEN -->
+<div id="lock-screen" class="hidden">
+  <div class="lock-icon">🔒</div>
+  <div class="lock-title">NoteFlow is locked</div>
+  <div class="lock-sub">Enter your PIN to unlock</div>
+  <div class="pin-dots">
+    <div class="pin-dot" id="pd0"></div>
+    <div class="pin-dot" id="pd1"></div>
+    <div class="pin-dot" id="pd2"></div>
+    <div class="pin-dot" id="pd3"></div>
+  </div>
+  <div class="pin-keypad">
+    <button class="pin-key" onclick="pinKey('1')">1</button>
+    <button class="pin-key" onclick="pinKey('2')">2</button>
+    <button class="pin-key" onclick="pinKey('3')">3</button>
+    <button class="pin-key" onclick="pinKey('4')">4</button>
+    <button class="pin-key" onclick="pinKey('5')">5</button>
+    <button class="pin-key" onclick="pinKey('6')">6</button>
+    <button class="pin-key" onclick="pinKey('7')">7</button>
+    <button class="pin-key" onclick="pinKey('8')">8</button>
+    <button class="pin-key" onclick="pinKey('9')">9</button>
+    <button class="pin-key"></button>
+    <button class="pin-key" onclick="pinKey('0')">0</button>
+    <button class="pin-key del" onclick="pinKey('del')">⌫</button>
+  </div>
+  <div class="pin-error" id="pin-error"></div>
+</div>
+
+<!-- APP -->
+<div id="app">
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar">
+    <div id="sidebar-header">
+      <span class="app-logo">Note<span>Flow</span></span>
+      <button class="sb-btn" onclick="showModal('modal-settings')" title="Settings">⚙</button>
+      <button class="sb-btn primary" onclick="newNote()" title="New note (Ctrl+N)">+ New</button>
+    </div>
+    <div id="search-bar">
+      <input id="search-input" type="search" placeholder="🔍  Search all notes..." oninput="onSearchInput(this.value)">
+    </div>
+    <div id="sidebar-nav">
+      <div class="nav-item active" data-filter="all" onclick="setFilter('all',this)"><span class="nav-icon">📋</span>All Notes<span class="nav-count" id="cnt-all">0</span></div>
+      <div class="nav-item" data-filter="favorites" onclick="setFilter('favorites',this)"><span class="nav-icon">⭐</span>Favorites<span class="nav-count" id="cnt-fav">0</span></div>
+      <div class="nav-item" data-filter="archived" onclick="setFilter('archived',this)"><span class="nav-icon">📦</span>Archived<span class="nav-count" id="cnt-arch">0</span></div>
+      <div class="nav-item" data-filter="trash" onclick="setFilter('trash',this)"><span class="nav-icon">🗑</span>Trash<span class="nav-count" id="cnt-trash">0</span></div>
+    </div>
+    <div id="sidebar-sections">
+      <div class="sb-section">
+        <div class="sb-section-hdr open" onclick="toggleSection(this)">Folders<span class="arrow">▶</span></div>
+        <div class="sb-section-body open" id="folders-list"></div>
+      </div>
+      <div class="sb-section">
+        <div class="sb-section-hdr open" onclick="toggleSection(this)">Tags<span class="arrow">▶</span></div>
+        <div class="sb-section-body open" id="tags-cloud"></div>
+      </div>
+    </div>
+    <div id="sort-bar">
+      <span class="sort-label">Sort</span>
+      <select class="sort-sel" onchange="setSortBy(this.value)">
+        <option value="modified">Modified</option>
+        <option value="created">Created</option>
+        <option value="alpha">A → Z</option>
+        <option value="size">Size</option>
+      </select>
+      <button class="sb-btn" id="sort-dir-btn" onclick="toggleSortDir()" title="Toggle direction" style="font-size:12px">↓</button>
+    </div>
+    <div id="notes-list"></div>
+  </aside>
+
+  <!-- RESIZE -->
+  <div id="resize-handle" id="rh"></div>
+
+  <!-- EDITOR PANE -->
+  <main id="editor-pane">
+
+    <!-- TOOLBAR -->
+    <div id="toolbar">
+      <div class="toolbar-row">
+        <!-- FILE -->
+        <button class="tb-btn" onclick="newNote()" title="New note (Ctrl+N)">📄 New</button>
+        <button class="tb-btn" onclick="openFile()" title="Open file (Ctrl+O)">📂 Open</button>
+        <button class="tb-btn" onclick="saveNote()" title="Save (Ctrl+S)">💾 Save</button>
+        <div class="tb-dropdown" id="dd-export">
+          <button class="tb-btn" onclick="toggleDropdown('dd-export')">↓ Export ▾</button>
+          <div class="tb-dropdown-menu">
+            <button onclick="exportNote('txt')">Export as .txt</button>
+            <button onclick="exportNote('md')">Export as .md</button>
+            <button onclick="exportNote('html')">Export as .html</button>
+            <div class="menu-sep"></div>
+            <button onclick="document.getElementById('file-input').click()">Import text file</button>
+          </div>
+        </div>
+        <div class="tb-sep"></div>
+        <!-- EDIT -->
+        <button class="tb-btn" onclick="document.execCommand('undo')" title="Undo (Ctrl+Z)">↩ Undo</button>
+        <button class="tb-btn" onclick="document.execCommand('redo')" title="Redo (Ctrl+Y)">↪ Redo</button>
+        <div class="tb-sep"></div>
+        <!-- VIEW -->
+        <button class="tb-btn" onclick="showModal('modal-find')" title="Find & Replace (Ctrl+F)">🔍 Find</button>
+        <button class="tb-btn" id="btn-preview" onclick="togglePreview()" title="Markdown Preview">👁 Preview</button>
+        <button class="tb-btn" onclick="toggleFullscreen()" title="Fullscreen (F11)">⛶</button>
+        <button class="tb-btn" onclick="zoomChange(-10)" title="Zoom out">A⁻</button>
+        <button class="tb-btn" id="zoom-val" onclick="resetZoom()" title="Reset zoom">100%</button>
+        <button class="tb-btn" onclick="zoomChange(10)" title="Zoom in">A⁺</button>
+        <div class="tb-sep"></div>
+        <button class="tb-btn" onclick="toggleZenMode()" title="Zen / Minimal mode" id="btn-zen">✦ Zen</button>
+        <div class="tb-sep"></div>
+        <button class="tb-btn" onclick="showWordFreq()" title="Word frequency">≋ Freq</button>
+        <button class="tb-btn" onclick="showModal('modal-templates')" title="Insert template">📑 Template</button>
+        <button class="tb-btn" onclick="insertDateTime()" title="Insert date & time">🗓 Date</button>
+        <button class="tb-btn" onclick="insertCheckbox()" title="Insert checkbox">☑ Check</button>
+        <div class="tb-sep"></div>
+        <button class="tb-btn" onclick="showModal('modal-settings')">⚙</button>
+      </div>
+      <div class="toolbar-row">
+        <!-- FORMAT -->
+        <select class="tb-sel" id="sel-font" onchange="applyFont(this.value)" title="Font family" style="max-width:150px">
+          <option value="instrument">Instrument Sans</option>
+          <option value="lora">Lora (Serif)</option>
+          <option value="mono">JetBrains Mono</option>
+          <option value="georgia">Georgia</option>
+          <option value="times">Times New Roman</option>
+          <option value="system">System UI</option>
+        </select>
+        <select class="tb-sel" id="sel-size" onchange="applyFontSize(this.value)" title="Font size" style="max-width:70px">
+          <option value="12">12px</option>
+          <option value="14">14px</option>
+          <option value="15" selected>15px</option>
+          <option value="16">16px</option>
+          <option value="18">18px</option>
+          <option value="20">20px</option>
+          <option value="24">24px</option>
+        </select>
+        <div class="tb-sep"></div>
+        <button class="tb-btn" onmousedown="e=>{e.preventDefault();fmt('bold')}" onclick="fmt('bold')" title="Bold (Ctrl+B)" id="btn-bold"><b>B</b></button>
+        <button class="tb-btn" onmousedown="e=>{e.preventDefault();fmt('italic')}" onclick="fmt('italic')" title="Italic (Ctrl+I)" id="btn-italic"><i>I</i></button>
+        <button class="tb-btn" onmousedown="e=>{e.preventDefault();fmt('underline')}" onclick="fmt('underline')" title="Underline (Ctrl+U)" id="btn-underline"><u>U</u></button>
+        <button class="tb-btn" onclick="fmt('strikeThrough')" title="Strikethrough" id="btn-strike"><s>S</s></button>
+        <div class="tb-sep"></div>
+        <div style="position:relative;flex-shrink:0">
+          <div class="color-swatch" id="swatch-text" title="Text color" onclick="document.getElementById('pick-text').click()" style="background:#cbd0ea"></div>
+          <input type="color" id="pick-text" value="#cbd0ea" style="position:absolute;opacity:0;width:0;height:0" onchange="applyTextColor(this.value)">
+        </div>
+        <div style="position:relative;flex-shrink:0">
+          <div class="color-swatch" id="swatch-hl" title="Highlight" onclick="document.getElementById('pick-hl').click()" style="background:#f0c062"></div>
+          <input type="color" id="pick-hl" value="#f0c062" style="position:absolute;opacity:0;width:0;height:0" onchange="applyHighlight(this.value)">
+        </div>
+        <div class="tb-sep"></div>
+        <!-- ALIGN -->
+        <button class="tb-btn" onclick="fmt('justifyLeft')" title="Align left">⬅</button>
+        <button class="tb-btn" onclick="fmt('justifyCenter')" title="Align center">≡</button>
+        <button class="tb-btn" onclick="fmt('justifyRight')" title="Align right">➡</button>
+        <button class="tb-btn" onclick="fmt('justifyFull')" title="Justify">⬛</button>
+        <div class="tb-sep"></div>
+        <!-- LISTS -->
+        <button class="tb-btn" onclick="fmt('insertUnorderedList')" title="Bullet list" id="btn-ul">• List</button>
+        <button class="tb-btn" onclick="fmt('insertOrderedList')" title="Numbered list" id="btn-ol">1. List</button>
+        <button class="tb-btn" onclick="fmt('indent')" title="Indent">→</button>
+        <button class="tb-btn" onclick="fmt('outdent')" title="Outdent">←</button>
+        <div class="tb-sep"></div>
+        <!-- INSERT -->
+        <div class="tb-dropdown" id="dd-heading">
+          <button class="tb-btn" onclick="toggleDropdown('dd-heading')">H ▾</button>
+          <div class="tb-dropdown-menu">
+            <button onclick="fmt('formatBlock','h1')">Heading 1</button>
+            <button onclick="fmt('formatBlock','h2')">Heading 2</button>
+            <button onclick="fmt('formatBlock','h3')">Heading 3</button>
+            <button onclick="fmt('formatBlock','p')">Paragraph</button>
+            <button onclick="fmt('formatBlock','blockquote')">Blockquote</button>
+            <button onclick="fmt('formatBlock','pre')">Code block</button>
+          </div>
+        </div>
+        <button class="tb-btn" onclick="fmt('insertHorizontalRule')" title="Horizontal rule">— HR</button>
+        <button class="tb-btn" onclick="insertLink()" title="Insert link">🔗</button>
+        <button class="tb-btn" onclick="fmt('removeFormat')" title="Clear formatting" class="danger">✕ Clear</button>
+      </div>
+    </div>
+
+    <!-- EMPTY STATE -->
+    <div id="empty-state">
+      <div class="es-icon">✍️</div>
+      <div class="es-title">No note selected</div>
+      <div class="es-sub">Create a new note or select one from the sidebar to start writing.</div>
+      <button class="btn btn-primary es-btn" onclick="newNote()">+ Create note</button>
+    </div>
+
+    <!-- NOTE TITLE BAR -->
+    <div id="note-titlebar" class="hidden">
+      <input id="note-title" type="text" placeholder="Untitled Note" oninput="onTitleChange(this.value)">
+      <div id="note-meta-bar">
+        <span class="nm-badge" id="nm-folder" onclick="showModal('modal-props')">📁 Personal</span>
+        <span id="nm-tags-wrap"></span>
+        <span class="nm-add" onclick="showModal('modal-props')">+ tag / folder</span>
+        <div id="word-goal-mini" class="hidden">
+          <span class="wg-label" id="wg-label-mini">0 / 500</span>
+          <div class="wg-bar"><div class="wg-fill" id="wg-fill-mini" style="width:0%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EDITOR SCROLL -->
+    <div id="editor-scroll" class="hidden">
+      <div id="editor-paper">
+        <div id="editor" contenteditable="true" spellcheck="true" data-placeholder="Start writing..." oninput="onEditorInput()" onkeydown="onEditorKeydown(event)" onkeyup="updateStatusBar()" onclick="updateStatusBar()" onmouseup="updateFormatButtons()"></div>
+      </div>
+    </div>
+
+    <!-- STATUS BAR -->
+    <div id="status-bar" class="hidden">
+      <span class="sb-item" id="sb-words">0 words</span>
+      <div class="sb-sep"></div>
+      <span class="sb-item" id="sb-chars">0 chars</span>
+      <div class="sb-sep"></div>
+      <span class="sb-item" id="sb-paras">0 paras</span>
+      <div class="sb-sep"></div>
+      <span class="sb-item" id="sb-cursor">Ln 1, Col 1</span>
+      <div class="sb-sep"></div>
+      <span class="sb-item" id="sb-read">~0 min read</span>
+      <div id="sb-wg" class="hidden">
+        <div class="sb-sep"></div>
+        <span class="sb-item" id="sb-wg-txt">Goal: 0/500</span>
+        <div class="sb-wg-bar"><div class="sb-wg-fill" id="sb-wg-fill" style="width:0%"></div></div>
+      </div>
+      <div id="sb-autosave">
+        <div class="sb-dot saved" id="sb-dot"></div>
+        <span id="sb-save-txt">Saved</span>
+        <div class="sb-sep"></div>
+        <span id="sb-zoom-txt">100%</span>
+        <div class="sb-sep"></div>
+        <span id="sb-modified-txt">—</span>
+      </div>
+    </div>
+  </main>
+
+  <!-- PREVIEW PANE -->
+  <div id="preview-pane" class="hidden">
+    <div id="preview-header">
+      <span class="preview-title">📖 Preview</span>
+      <button class="tb-btn" onclick="togglePreview()">✕</button>
+    </div>
+    <div id="preview-scroll">
+      <div id="preview-body"></div>
+    </div>
+  </div>
+</div>
+
+<!-- FIND & REPLACE MODAL -->
+<div class="modal-overlay hidden" id="modal-find">
+  <div class="modal sm" style="width:440px">
+    <div class="modal-title">🔍 Find & Replace</div>
+    <button class="modal-close" onclick="closeFind()">✕</button>
+    <div class="fr-row">
+      <input class="fr-input" id="fr-find" placeholder="Find..." oninput="runFind()" onkeydown="frKeyNav(event)">
+      <div class="fr-nav">
+        <button class="btn btn-ghost btn-sm" onclick="findNav(-1)">↑</button>
+        <button class="btn btn-ghost btn-sm" onclick="findNav(1)">↓</button>
+      </div>
+      <span class="fr-count" id="fr-count">–</span>
+    </div>
+    <div class="fr-row">
+      <input class="fr-input" id="fr-replace" placeholder="Replace with...">
+      <button class="btn btn-ghost btn-sm" onclick="doReplace(false)">Replace</button>
+      <button class="btn btn-primary btn-sm" onclick="doReplace(true)">All</button>
+    </div>
+    <div class="fr-opts">
+      <label class="fr-opt"><input type="checkbox" id="fr-case" onchange="runFind()"> Case</label>
+      <label class="fr-opt"><input type="checkbox" id="fr-word" onchange="runFind()"> Whole word</label>
+      <label class="fr-opt"><input type="checkbox" id="fr-regex" onchange="runFind()"> Regex</label>
+      <label class="fr-opt"><input type="checkbox" id="fr-hlall" checked onchange="runFind()"> Highlight all</label>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay hidden" id="modal-settings">
+  <div class="modal lg">
+    <div class="modal-title">⚙ Settings</div>
+    <button class="modal-close" onclick="closeModal('modal-settings')">✕</button>
+    <div class="settings-tabs">
+      <button class="st-tab active" onclick="switchSettingsTab('editor',this)">Editor</button>
+      <button class="st-tab" onclick="switchSettingsTab('appearance',this)">Appearance</button>
+      <button class="st-tab" onclick="switchSettingsTab('behaviour',this)">Behaviour</button>
+      <button class="st-tab" onclick="switchSettingsTab('security',this)">Security</button>
+      <button class="st-tab" onclick="switchSettingsTab('about',this)">About</button>
+    </div>
+    <!-- EDITOR TAB -->
+    <div class="settings-panel active" id="sp-editor">
+      <div class="setting-row">
+        <div><div class="setting-label">Word Wrap</div><div class="setting-sub">Wrap long lines in the editor</div></div>
+        <div class="setting-control"><label class="toggle"><input type="checkbox" id="set-wrap" onchange="toggleWordWrap(this.checked)"><span class="toggle-slider"></span></label></div>
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Spell Check</div><div class="setting-sub">Enable browser spell checking</div></div>
+        <div class="setting-control"><label class="toggle"><input type="checkbox" id="set-spell" onchange="toggleSpell(this.checked)"><span class="toggle-slider"></span></label></div>
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Tab Size</div><div class="setting-sub">Spaces inserted when Tab is pressed</div></div>
+        <div class="setting-control"><select id="set-tabsize" onchange="setTabSize(this.value)"><option value="2">2</option><option value="4">4</option><option value="8">8</option></select></div>
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Editor Font</div></div>
+        <div class="setting-control"><select id="set-font" onchange="setDefaultFont(this.value)">
+          <option value="instrument">Instrument Sans</option>
+          <option value="lora">Lora (Serif)</option>
+          <option value="mono">JetBrains Mono</option>
+          <option value="georgia">Georgia</option>
+        </select></div>
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Editor Font Size</div></div>
+        <div class="setting-control"><select id="set-fontsize" onchange="setDefaultFontSize(this.value)">
+          <option value="13">13px</option><option value="14">14px</option><option value="15" selected>15px</option><option value="16">16px</option><option value="18">18px</option><option value="20">20px</option>
+        </select></div>
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Zoom Level</div></div>
+        <div class="setting-control" style="display:flex;align-items:center;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="zoomChange(-10)">−</button>
+          <span id="set-zoom-val" style="font-size:13px;min-width:40px;text-align:center">100%</span>
+          <button class="btn btn-ghost btn-sm" onclick="zoomChange(10)">+</button>
+          <button class="btn btn-ghost btn-sm" onclick="resetZoom()">Reset</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Status Bar</div></div>
+        <div class="setting-control"><label class="toggle"><input type="checkbox" id="set-statusbar" onchange="toggleStatusBar(this.checked)"><span class="toggle-slider"></span></label></div>
+      </div>
+    </div>
+    <!-- APPEARANCE TAB -->
+    <div class="settings-panel" id="sp-appearance">
+      <div class="field"><label>Theme</label>
+        <div class="theme-grid">
+          <div class="theme-card active" data-theme="dark" onclick="setTheme('dark',this)">
+            <div class="theme-preview" style="background:linear-gradient(135deg,#111218 50%,#1a1b2e)"></div>
+            <div class="theme-name">Dark</div>
+          </div>
+          <div class="theme-card" data-theme="light" onclick="setTheme('light',this)">
+            <div class="theme-preview" style="background:linear-gradient(135deg,#f5f1eb 50%,#ffffff)"></div>
+            <div class="theme-name">Light</div>
+          </div>
+          <div class="theme-card" data-theme="sepia" onclick="setTheme('sepia',this)">
+            <div class="theme-preview" style="background:linear-gradient(135deg,#f0e4cc 50%,#faf2e4)"></div>
+            <div class="theme-name">Sepia</div>
+          </div>
+          <div class="theme-card" data-theme="terminal" onclick="setTheme('terminal',this)">
+            <div class="theme-preview" style="background:linear-gradient(135deg,#050905 50%,#091409);border:1px solid #163016"></div>
+            <div class="theme-name" style="color:#20e820">Terminal</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- BEHAVIOUR TAB -->
+    <div class="settings-panel" id="sp-behaviour">
+      <div class="setting-row">
+        <div><div class="setting-label">Auto-Save</div><div class="setting-sub">Save notes automatically as you type</div></div>
+        <div class="setting-control"><label class="toggle"><input type="checkbox" id="set-autosave" onchange="toggleAutoSave(this.checked)"><span class="toggle-slider"></span></label></div>
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Typewriter Sound</div><div class="setting-sub">Keypress click sound while typing</div></div>
+        <div class="setting-control"><label class="toggle"><input type="checkbox" id="set-sound" onchange="toggleSound(this.checked)"><span class="toggle-slider"></span></label></div>
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Global Word Goal</div><div class="setting-sub">Daily writing target (0 = disabled)</div></div>
+        <div class="setting-control"><input type="number" id="set-wordgoal" min="0" max="100000" step="100" value="0" onchange="setWordGoal(this.value)" style="width:80px;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--r);padding:4px 8px;color:var(--tx);font-family:var(--font-ui);font-size:12px;outline:none"></div>
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Writing Streak</div><div class="setting-sub" id="streak-display">—</div></div>
+        <div class="setting-control"></div>
+      </div>
+    </div>
+    <!-- SECURITY TAB -->
+    <div class="settings-panel" id="sp-security">
+      <div class="setting-row">
+        <div><div class="setting-label">Lock NoteFlow</div><div class="setting-sub">Require PIN to access your notes</div></div>
+        <div class="setting-control"><label class="toggle"><input type="checkbox" id="set-lock" onchange="toggleLock(this.checked)"><span class="toggle-slider"></span></label></div>
+      </div>
+      <div id="pin-setup" style="margin-top:12px;display:none">
+        <div class="field">
+          <label>Set PIN (4 digits)</label>
+          <div class="field row">
+            <input type="password" id="pin-input" maxlength="4" placeholder="New PIN" style="width:120px">
+            <button class="btn btn-primary" onclick="savePin()">Set PIN</button>
+            <button class="btn btn-ghost" onclick="removePin()">Remove</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- ABOUT TAB -->
+    <div class="settings-panel" id="sp-about">
+      <div style="text-align:center;padding:20px 0">
+        <div style="font-size:40px;margin-bottom:8px">✍️</div>
+        <div style="font-size:18px;font-weight:700;color:var(--tx)">NoteFlow</div>
+        <div style="font-size:12px;color:var(--tx3);margin:4px 0 16px">Full-featured notepad • v1.0</div>
+        <div style="font-size:12.5px;color:var(--tx2);line-height:1.8;text-align:left;max-width:360px;margin:0 auto">
+          <b>Keyboard shortcuts:</b><br>
+          Ctrl+N — New note<br>
+          Ctrl+S — Save<br>
+          Ctrl+O — Open file<br>
+          Ctrl+F — Find & Replace<br>
+          Ctrl+B/I/U — Bold/Italic/Underline<br>
+          Ctrl+Z/Y — Undo/Redo<br>
+          Ctrl+A — Select all<br>
+          F11 — Fullscreen<br>
+          Ctrl+Shift+Z — Zen mode<br>
+          Ctrl+P — Preview toggle<br>
+          Esc — Close modals / exit find<br>
+          Tab — Indent (in editor)
+        </div>
+        <div style="margin-top:16px;display:flex;gap:8px;justify-content:center">
+          <button class="btn btn-danger btn-sm" onclick="if(confirm('Clear ALL notes and settings? This cannot be undone.'))clearAll()">⚠ Clear All Data</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="closeModal('modal-settings')">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- TEMPLATES MODAL -->
+<div class="modal-overlay hidden" id="modal-templates">
+  <div class="modal">
+    <div class="modal-title">📑 Insert Template</div>
+    <button class="modal-close" onclick="closeModal('modal-templates')">✕</button>
+    <div class="tmpl-grid" id="tmpl-grid"></div>
+  </div>
+</div>
+
+<!-- WORD FREQUENCY MODAL -->
+<div class="modal-overlay hidden" id="modal-wf">
+  <div class="modal">
+    <div class="modal-title">≋ Word Frequency Analysis</div>
+    <button class="modal-close" onclick="closeModal('modal-wf')">✕</button>
+    <div id="wf-stats" style="display:flex;gap:16px;margin-bottom:14px;flex-wrap:wrap"></div>
+    <div id="wf-list"></div>
+  </div>
+</div>
+
+<!-- NOTE PROPERTIES MODAL -->
+<div class="modal-overlay hidden" id="modal-props">
+  <div class="modal sm">
+    <div class="modal-title">📋 Note Properties</div>
+    <button class="modal-close" onclick="closeModal('modal-props')">✕</button>
+    <div class="field">
+      <label>Folder</label>
+      <select id="prop-folder" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--r);padding:6px 8px;font-size:13px;color:var(--tx);font-family:var(--font-ui);outline:none"></select>
+    </div>
+    <div class="field">
+      <label>Tags (press Enter to add)</label>
+      <div class="tags-input-wrap" id="tags-wrap" onclick="document.getElementById('tag-input').focus()">
+        <input id="tag-input" class="tags-input" placeholder="Add tag..." onkeydown="tagKeydown(event)">
+      </div>
+    </div>
+    <div class="field">
+      <label>Note Color</label>
+      <div class="color-picker-row" id="note-colors"></div>
+    </div>
+    <div class="field">
+      <label>Word Goal (for this note)</label>
+      <input type="number" id="prop-wordgoal" min="0" max="100000" step="100" placeholder="0 = use global">
+    </div>
+    <div class="field">
+      <label style="display:flex;align-items:center;gap:8px">
+        <input type="checkbox" id="prop-pin" accent-color="var(--accent)"> 📌 Pin this note
+      </label>
+    </div>
+    <div class="field">
+      <label style="display:flex;align-items:center;gap:8px">
+        <input type="checkbox" id="prop-fav" accent-color="var(--accent)"> ⭐ Favorite
+      </label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-props')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveProps()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- NEW FOLDER MODAL -->
+<div class="modal-overlay hidden" id="modal-folder">
+  <div class="modal sm">
+    <div class="modal-title">📁 New Folder</div>
+    <button class="modal-close" onclick="closeModal('modal-folder')">✕</button>
+    <div class="field">
+      <label>Folder Name</label>
+      <input type="text" id="folder-name-input" placeholder="e.g. Work, Personal, Ideas..." onkeydown="if(event.key==='Enter')createFolder()">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-folder')">Cancel</button>
+      <button class="btn btn-primary" onclick="createFolder()">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- HIDDEN INPUTS -->
+<input type="file" id="file-input" accept=".txt,.md,.html,.json" style="display:none" onchange="importFile(event)">
+<div id="toast"></div>
+
+<script>
+// ============================================================
+// NOTEFLOW — Full-Featured Notepad Application
+// ============================================================
+
+// ===== CONSTANTS =====
+const STORAGE_KEY = 'noteflow_v2';
+const AUTO_SAVE_DELAY = 2500;
+const NOTE_COLORS = ['', '#e87070', '#f0c062', '#5bbf96', '#7c9cf5', '#b57bee', '#e8965a', '#4ec9b0'];
+const TEMPLATES = [
+  { icon:'📔', name:'Daily Journal', desc:'Morning reflection & gratitude', html:`<h2>📔 Daily Journal — ${fmtDate()}</h2><h3>Morning Check-in</h3><p>How am I feeling today?</p><p><br></p><h3>Gratitude (3 things)</h3><ul><li></li><li></li><li></li></ul><h3>Today's Focus</h3><p></p><h3>Evening Reflection</h3><p>What went well? What could improve?</p><p></p>` },
+  { icon:'📅', name:'Meeting Notes', desc:'Agenda, decisions & action items', html:`<h2>📅 Meeting Notes — ${fmtDate()}</h2><p><strong>Attendees:</strong> </p><p><strong>Agenda:</strong></p><ul><li></li></ul><h3>Discussion</h3><p></p><h3>Decisions Made</h3><ul><li></li></ul><h3>Action Items</h3><ul><li>[ ] &nbsp; — Owner: &nbsp; — Due: </li></ul>` },
+  { icon:'✅', name:'To-Do List', desc:'Task list with priorities', html:`<h2>✅ To-Do List — ${fmtDate()}</h2><h3>High Priority</h3><ul><li></li></ul><h3>Medium Priority</h3><ul><li></li></ul><h3>Low Priority / Someday</h3><ul><li></li></ul><h3>Done ✓</h3><ul><li style="text-decoration:line-through;color:var(--tx3)"></li></ul>` },
+  { icon:'💡', name:'Idea Capture', desc:'Brainstorm & concept dump', html:`<h2>💡 Idea: </h2><p><strong>One-liner:</strong> </p><h3>The Problem</h3><p></p><h3>The Idea</h3><p></p><h3>Why it works</h3><ul><li></li></ul><h3>Next steps</h3><ul><li></li></ul><h3>Open questions</h3><ul><li></li></ul>` },
+  { icon:'📰', name:'Article Draft', desc:'Blog post or essay structure', html:`<h1>Article Title</h1><p><em>Tagline or subtitle here</em></p><hr><h2>Introduction</h2><p></p><h2>Section 1</h2><p></p><h2>Section 2</h2><p></p><h2>Conclusion</h2><p></p><hr><p><strong>Tags:</strong> &nbsp;&nbsp;<strong>Category:</strong> </p>` },
+  { icon:'📊', name:'Project Plan', desc:'Goals, milestones & risks', html:`<h2>📊 Project: </h2><p><strong>Start:</strong>  &nbsp;&nbsp;<strong>Deadline:</strong> &nbsp;&nbsp;<strong>Owner:</strong> </p><h3>Goal</h3><p></p><h3>Milestones</h3><ul><li></li></ul><h3>Resources Needed</h3><ul><li></li></ul><h3>Risks</h3><ul><li></li></ul><h3>Notes</h3><p></p>` },
+  { icon:'🔬', name:'Research Notes', desc:'Sources, notes & synthesis', html:`<h2>🔬 Research: </h2><p><strong>Date:</strong> ${fmtDate()} &nbsp;&nbsp;<strong>Topic:</strong> </p><h3>Key Question</h3><p></p><h3>Sources</h3><ul><li></li></ul><h3>Key Findings</h3><ul><li></li></ul><h3>My Synthesis</h3><p></p><h3>Follow-up Questions</h3><ul><li></li></ul>` },
+  { icon:'📖', name:'Book Notes', desc:'Summary & key takeaways', html:`<h2>📖 Book: </h2><p><strong>Author:</strong>  &nbsp;&nbsp;<strong>Finished:</strong> ${fmtDate()}</p><p><strong>My rating:</strong> ★★★★☆</p><h3>In one sentence</h3><p></p><h3>Key ideas</h3><ul><li></li></ul><h3>Best quotes</h3><blockquote></blockquote><h3>How I'll apply this</h3><ul><li></li></ul>` },
+];
+const FONT_MAP = {
+  instrument:"'Instrument Sans',system-ui,sans-serif",
+  lora:"'Lora',Georgia,serif",
+  mono:"'JetBrains Mono','Fira Code',monospace",
+  georgia:"Georgia,'Times New Roman',serif",
+  times:"'Times New Roman',Times,serif",
+  system:"system-ui,-apple-system,sans-serif"
+};
+
+// ===== STATE =====
+let state = loadState();
+let autoSaveTimer = null;
+let dirty = false;
+let pinBuffer = '';
+let findMatches = [];
+let findCurrent = -1;
+let audioCtx = null;
+
+// ===== STORAGE =====
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return Object.assign(defaultState(), JSON.parse(raw));
+  } catch {}
+  return defaultState();
+}
+function defaultState() {
+  return {
+    notes: [],
+    folders: ['Personal', 'Work', 'Ideas'],
+    settings: {
+      theme: 'dark',
+      autoSave: true,
+      wordWrap: true,
+      tabSize: 2,
+      softTabs: true,
+      zoom: 100,
+      statusBar: true,
+      typewriterSound: false,
+      spellCheck: true,
+      currentNoteId: null,
+      previewOpen: false,
+      wordGoal: 0,
+      streakDate: '',
+      streakCount: 0,
+      locked: false,
+      pin: '',
+      font: 'instrument',
+      fontSize: 15,
+    }
+  };
+}
+function persist() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) { toast('Storage full — export to save.', 'warn'); }
+}
+
+// ===== NOTE CRUD =====
+function genId() { return 'n' + Date.now() + Math.random().toString(36).slice(2,6); }
+function getNoteById(id) { return state.notes.find(n => n.id === id); }
+function getCurrentNote() { return getNoteById(state.settings.currentNoteId); }
+
+function newNote(templateHtml = '') {
+  const note = {
+    id: genId(),
+    title: '',
+    content: templateHtml || '',
+    created: Date.now(),
+    modified: Date.now(),
+    folder: state.settings.lastFolder || (state.folders[0] || 'Personal'),
+    tags: [],
+    pinned: false,
+    favorite: false,
+    archived: false,
+    deleted: false,
+    deletedAt: null,
+    color: '',
+    wordGoal: 0,
+  };
+  state.notes.unshift(note);
+  persist();
+  selectNote(note.id);
+  document.getElementById('note-title').focus();
+  renderNotesList();
+  updateCounts();
+  toast('New note created', 'ok');
+}
+
+function selectNote(id) {
+  saveCurrentEditorContent();
+  state.settings.currentNoteId = id;
+  persist();
+  const note = getNoteById(id);
+  if (!note) return showEmptyState(true);
+  showEmptyState(false);
+  document.getElementById('note-title').value = note.title || '';
+  const editor = document.getElementById('editor');
+  editor.innerHTML = note.content || '';
+  editor.style.fontFamily = FONT_MAP[state.settings.font] || FONT_MAP.instrument;
+  editor.style.fontSize = state.settings.fontSize + 'px';
+  if (state.settings.previewOpen) updatePreview();
+  updateNoteMetaBar(note);
+  updateStatusBar();
+  updateWordGoalDisplay(note);
+  updateFormatButtons();
+  updateEditorStyles();
+  dirty = false;
+  setSaveStatus('saved');
+  renderNotesList();
+}
+
+function saveCurrentEditorContent() {
+  const note = getCurrentNote();
+  if (!note) return;
+  note.content = document.getElementById('editor').innerHTML;
+  note.title = document.getElementById('note-title').value || 'Untitled';
+  note.modified = Date.now();
+  persist();
+}
+
+function saveNote() {
+  saveCurrentEditorContent();
+  dirty = false;
+  setSaveStatus('saved');
+  updateStreak();
+  toast('Saved ✓', 'ok');
+  renderNotesList();
+}
+
+function deleteNote(id, soft = true) {
+  const note = getNoteById(id);
+  if (!note) return;
+  if (soft) {
+    note.deleted = true;
+    note.deletedAt = Date.now();
+    note.archived = false;
+    toast('Moved to trash', 'warn');
+  } else {
+    if (!confirm('Permanently delete this note? This cannot be undone.')) return;
+    state.notes = state.notes.filter(n => n.id !== id);
+    toast('Note deleted', 'warn');
+  }
+  if (state.settings.currentNoteId === id) {
+    const next = state.notes.find(n => !n.deleted && !n.archived && n.id !== id);
+    if (next) selectNote(next.id);
+    else { state.settings.currentNoteId = null; showEmptyState(true); }
+  }
+  persist();
+  renderNotesList();
+  updateCounts();
+}
+
+function restoreNote(id) {
+  const note = getNoteById(id);
+  if (note) { note.deleted = false; note.deletedAt = null; persist(); renderNotesList(); updateCounts(); toast('Note restored', 'ok'); }
+}
+
+function archiveNote(id) {
+  const note = getNoteById(id);
+  if (!note) return;
+  note.archived = !note.archived;
+  if (note.archived) note.deleted = false;
+  persist(); renderNotesList(); updateCounts();
+  toast(note.archived ? 'Note archived' : 'Note unarchived', 'ok');
+}
+
+function duplicateNote(id) {
+  const note = getNoteById(id);
+  if (!note) return;
+  const copy = { ...note, id: genId(), title: (note.title || 'Untitled') + ' (copy)', created: Date.now(), modified: Date.now() };
+  state.notes.unshift(copy);
+  persist(); renderNotesList(); updateCounts(); selectNote(copy.id);
+  toast('Note duplicated', 'ok');
+}
+
+function togglePin(id) {
+  const n = getNoteById(id); if (!n) return;
+  n.pinned = !n.pinned; persist(); renderNotesList();
+}
+
+function toggleFav(id) {
+  const n = getNoteById(id); if (!n) return;
+  n.favorite = !n.favorite; persist(); renderNotesList(); updateCounts();
+}
+
+// ===== RENDERING =====
+function renderNotesList() {
+  const s = document.getElementById('search-input').value.toLowerCase();
+  const filter = state._filter || 'all';
+  const tagF = state._tagFilter || '';
+  
+  let notes = state.notes.filter(n => {
+    if (filter === 'favorites') return !n.deleted && n.favorite;
+    if (filter === 'archived') return n.archived && !n.deleted;
+    if (filter === 'trash') return n.deleted;
+    if (filter !== 'all') return !n.deleted && !n.archived && n.folder === filter;
+    return !n.deleted && !n.archived;
+  });
+  
+  if (s) notes = notes.filter(n =>
+    (n.title || '').toLowerCase().includes(s) ||
+    (n.content || '').replace(/<[^>]*>/g,'').toLowerCase().includes(s) ||
+    n.tags.some(t => t.toLowerCase().includes(s))
+  );
+  
+  if (tagF) notes = notes.filter(n => n.tags.includes(tagF));
+  
+  // Sort
+  const dir = state._sortDir || 'desc';
+  notes.sort((a, b) => {
+    let va, vb;
+    switch (state._sortBy || 'modified') {
+      case 'created': va = a.created; vb = b.created; break;
+      case 'alpha': va = (a.title||'').toLowerCase(); vb = (b.title||'').toLowerCase(); return dir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+      case 'size': va = (a.content||'').length; vb = (b.content||'').length; break;
+      default: va = a.modified; vb = b.modified;
+    }
+    return dir === 'asc' ? va - vb : vb - va;
+  });
+  
+  // Pins first
+  notes.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
+  
+  const el = document.getElementById('notes-list');
+  if (!notes.length) {
+    el.innerHTML = `<div style="padding:20px;text-align:center;color:var(--tx3);font-size:12px">${s ? 'No matches' : 'No notes here'}</div>`;
+    return;
+  }
+  
+  el.innerHTML = notes.map(n => {
+    const active = n.id === state.settings.currentNoteId;
+    const plain = (n.content || '').replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim();
+    const preview = plain.slice(0, 80) || 'Empty note';
+    const age = timeAgo(n.modified);
+    const wc = plain.split(/\s+/).filter(Boolean).length;
+    const colorDot = n.color ? `<span style="width:6px;height:6px;border-radius:50%;background:${n.color};display:inline-block;flex-shrink:0"></span>` : '';
+    return `<div class="note-item${active ? ' active' : ''}${n.deleted ? ' note-item-trash' : ''}" onclick="selectNote('${n.id}')">
+      <div class="ni-row">
+        ${colorDot}
+        <div class="ni-title">${esc(n.title || 'Untitled')}</div>
+        ${n.pinned ? '<span class="ni-pin">📌</span>' : ''}
+        ${n.favorite ? '<span class="ni-fav">⭐</span>' : ''}
+      </div>
+      <div class="ni-preview">${esc(preview)}</div>
+      <div class="ni-meta">
+        <span>${age}</span>
+        <span>·</span>
+        <span>${wc}w</span>
+        ${n.tags.slice(0,2).map(t=>`<span class="ni-tag">${esc(t)}</span>`).join('')}
+      </div>
+      <div class="ni-actions">
+        ${n.deleted
+          ? `<button class="ni-act" onclick="event.stopPropagation();restoreNote('${n.id}')">↩ Restore</button>
+             <button class="ni-act danger" onclick="event.stopPropagation();deleteNote('${n.id}',false)">✕ Delete</button>`
+          : `<button class="ni-act" onclick="event.stopPropagation();togglePin('${n.id}')">${n.pinned?'Unpin':'📌 Pin'}</button>
+             <button class="ni-act" onclick="event.stopPropagation();toggleFav('${n.id}')">${n.favorite?'Unfav':'⭐ Fav'}</button>
+             <button class="ni-act" onclick="event.stopPropagation();archiveNote('${n.id}')">${n.archived?'Unarchive':'📦 Archive'}</button>
+             <button class="ni-act" onclick="event.stopPropagation();duplicateNote('${n.id}')">⎘ Dup</button>
+             <button class="ni-act danger" onclick="event.stopPropagation();deleteNote('${n.id}',true)">🗑</button>`
+        }
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderFoldersList() {
+  const el = document.getElementById('folders-list');
+  const cur = state._filter;
+  el.innerHTML = state.folders.map(f => `
+    <div class="folder-item${cur === f ? ' active' : ''}" onclick="setFilter('${esc(f)}',this)" data-filter="${esc(f)}">
+      <span>📁</span> ${esc(f)}
+      <span class="folder-del" onclick="event.stopPropagation();removeFolder('${esc(f)}')">✕</span>
+    </div>`).join('') +
+    `<div class="folder-add" onclick="showModal('modal-folder')">＋ New folder</div>`;
+}
+
+function renderTagsCloud() {
+  const el = document.getElementById('tags-cloud');
+  const all = {};
+  state.notes.filter(n => !n.deleted && !n.archived).forEach(n => n.tags.forEach(t => all[t] = (all[t]||0)+1));
+  const tags = Object.entries(all).sort((a,b)=>b[1]-a[1]);
+  if (!tags.length) { el.innerHTML = '<div style="padding:4px 8px;font-size:11.5px;color:var(--tx3)">No tags yet</div>'; return; }
+  el.innerHTML = '<div class="tag-cloud">' + tags.map(([t,c])=>`<span class="tag-pill${state._tagFilter===t?' active':''}" onclick="setTagFilter('${esc(t)}')">${esc(t)} <small>${c}</small></span>`).join('') + '</div>';
+}
+
+function updateCounts() {
+  const active = state.notes.filter(n => !n.deleted && !n.archived);
+  el('cnt-all').textContent = active.length;
+  el('cnt-fav').textContent = active.filter(n=>n.favorite).length;
+  el('cnt-arch').textContent = state.notes.filter(n=>n.archived&&!n.deleted).length;
+  el('cnt-trash').textContent = state.notes.filter(n=>n.deleted).length;
+}
+
+function updateNoteMetaBar(note) {
+  if (!note) return;
+  el('nm-folder').innerHTML = '📁 ' + esc(note.folder || 'Unfiled');
+  if (note.color) el('nm-folder').style.borderLeft = `3px solid ${note.color}`;
+  else el('nm-folder').style.borderLeft = '';
+  const tw = el('nm-tags-wrap');
+  tw.innerHTML = note.tags.map(t=>`<span class="nm-badge" onclick="showModal('modal-props')">🏷 ${esc(t)}</span>`).join('');
+}
+
+function showEmptyState(show) {
+  el('empty-state').classList.toggle('hidden', !show);
+  el('note-titlebar').classList.toggle('hidden', show);
+  el('editor-scroll').classList.toggle('hidden', show);
+  el('status-bar').classList.toggle('hidden', show || !state.settings.statusBar);
+}
+
+function updateEditorStyles() {
+  const ed = el('editor');
+  ed.style.whiteSpace = state.settings.wordWrap ? 'pre-wrap' : 'pre';
+  ed.spellcheck = state.settings.spellCheck;
+  ed.style.fontFamily = FONT_MAP[state.settings.font] || FONT_MAP.instrument;
+  ed.style.fontSize = (state.settings.fontSize * (state.settings.zoom / 100)) + 'px';
+}
+
+// ===== EDITOR EVENTS =====
+function onEditorInput() {
+  dirty = true;
+  setSaveStatus('unsaved');
+  if (state.settings.typewriterSound) playClick();
+  if (state.settings.autoSave) scheduleAutoSave();
+  if (state.settings.previewOpen) updatePreview();
+  updateStatusBar();
+  updateWordGoalDisplay(getCurrentNote());
+  updateFormatButtons();
+}
+
+function onTitleChange(v) {
+  dirty = true;
+  setSaveStatus('unsaved');
+  if (state.settings.autoSave) scheduleAutoSave();
+}
+
+function onEditorKeydown(e) {
+  // Tab key → insert spaces
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const spaces = ' '.repeat(state.settings.tabSize);
+    document.execCommand('insertText', false, spaces);
+    return;
+  }
+  // Ctrl shortcuts
+  if (e.ctrlKey || e.metaKey) {
+    switch(e.key.toLowerCase()) {
+      case 'b': e.preventDefault(); fmt('bold'); break;
+      case 'i': e.preventDefault(); fmt('italic'); break;
+      case 'u': e.preventDefault(); fmt('underline'); break;
+      case 's': e.preventDefault(); saveNote(); break;
+      case 'f': e.preventDefault(); showModal('modal-find'); break;
+      case 'p': e.preventDefault(); togglePreview(); break;
+      case 'n': e.preventDefault(); newNote(); break;
+    }
+  }
+  if (e.key === 'Escape') closeFind();
+}
+
+function scheduleAutoSave() {
+  clearTimeout(autoSaveTimer);
+  setSaveStatus('saving');
+  autoSaveTimer = setTimeout(() => {
+    saveCurrentEditorContent();
+    dirty = false;
+    setSaveStatus('saved');
+    renderNotesList();
+  }, AUTO_SAVE_DELAY);
+}
+
+// ===== FORMATTING =====
+function fmt(cmd, val = null) {
+  const ed = el('editor');
+  ed.focus();
+  if (val) document.execCommand(cmd, false, val);
+  else document.execCommand(cmd, false, null);
+  updateFormatButtons();
+  onEditorInput();
+}
+
+function applyFont(val) {
+  state.settings.font = val;
+  updateEditorStyles();
+  persist();
+}
+
+function applyFontSize(val) {
+  state.settings.fontSize = parseInt(val);
+  updateEditorStyles();
+  persist();
+}
+
+function applyTextColor(hex) {
+  el('swatch-text').style.background = hex;
+  el('editor').focus();
+  document.execCommand('foreColor', false, hex);
+  onEditorInput();
+}
+
+function applyHighlight(hex) {
+  el('swatch-hl').style.background = hex;
+  el('editor').focus();
+  document.execCommand('hiliteColor', false, hex);
+  onEditorInput();
+}
+
+function updateFormatButtons() {
+  try {
+    el('btn-bold').classList.toggle('on', document.queryCommandState('bold'));
+    el('btn-italic').classList.toggle('on', document.queryCommandState('italic'));
+    el('btn-underline').classList.toggle('on', document.queryCommandState('underline'));
+    el('btn-strike').classList.toggle('on', document.queryCommandState('strikeThrough'));
+    el('btn-ul').classList.toggle('on', document.queryCommandState('insertUnorderedList'));
+    el('btn-ol').classList.toggle('on', document.queryCommandState('insertOrderedList'));
+  } catch {}
+}
+
+function insertDateTime() {
+  const now = new Date();
+  const str = now.toLocaleString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit' });
+  el('editor').focus();
+  document.execCommand('insertText', false, str);
+  onEditorInput();
+}
+
+function insertCheckbox() {
+  el('editor').focus();
+  document.execCommand('insertHTML', false, '<div class="check-li"><input type="checkbox" onclick="this.parentElement.classList.toggle(\'checked\',this.checked)"><span>&nbsp;</span></div>');
+  onEditorInput();
+}
+
+function insertLink() {
+  const url = prompt('Enter URL:', 'https://');
+  if (!url) return;
+  el('editor').focus();
+  document.execCommand('createLink', false, url);
+  onEditorInput();
+}
+
+// ===== STATUS BAR =====
+function updateStatusBar() {
+  const note = getCurrentNote();
+  if (!note) return;
+  const ed = el('editor');
+  const plain = ed.innerText || '';
+  const words = plain.trim() ? plain.trim().split(/\s+/).length : 0;
+  const chars = plain.length;
+  const paras = (plain.match(/\n\s*\n/g)||[]).length + (plain.trim() ? 1 : 0);
+  const readMin = Math.ceil(words / 200);
+  
+  el('sb-words').textContent = words + (words === 1 ? ' word' : ' words');
+  el('sb-chars').textContent = chars + ' chars';
+  el('sb-paras').textContent = paras + (paras === 1 ? ' para' : ' paras');
+  el('sb-read').textContent = '~' + readMin + ' min read';
+  
+  // Cursor position
+  try {
+    const sel = window.getSelection();
+    if (sel.rangeCount) {
+      const range = sel.getRangeAt(0);
+      const pre = range.cloneRange();
+      pre.selectNodeContents(ed);
+      pre.setEnd(range.startContainer, range.startOffset);
+      const preText = pre.toString();
+      const lines = preText.split('\n');
+      const ln = lines.length;
+      const col = lines[lines.length - 1].length + 1;
+      el('sb-cursor').textContent = `Ln ${ln}, Col ${col}`;
+    }
+  } catch {}
+  
+  el('sb-modified-txt').textContent = timeAgo(note.modified);
+  el('sb-zoom-txt').textContent = state.settings.zoom + '%';
+}
+
+function updateWordGoalDisplay(note) {
+  const goal = (note && note.wordGoal) || state.settings.wordGoal;
+  if (!goal) {
+    el('word-goal-mini').classList.add('hidden');
+    el('sb-wg').classList.add('hidden');
+    return;
+  }
+  const ed = el('editor');
+  const plain = (ed.innerText || '').trim();
+  const words = plain ? plain.split(/\s+/).length : 0;
+  const pct = Math.min(100, Math.round(words / goal * 100));
+  const done = words >= goal;
+  
+  el('word-goal-mini').classList.remove('hidden');
+  el('wg-label-mini').textContent = words + ' / ' + goal;
+  el('wg-fill-mini').style.width = pct + '%';
+  el('wg-fill-mini').classList.toggle('done', done);
+  
+  el('sb-wg').classList.remove('hidden');
+  el('sb-wg-txt').textContent = 'Goal: ' + words + '/' + goal;
+  el('sb-wg-fill').style.width = pct + '%';
+  el('sb-wg-fill').classList.toggle('done', done);
+}
+
+function setSaveStatus(state) {
+  const dot = el('sb-dot');
+  const txt = el('sb-save-txt');
+  dot.className = 'sb-dot ' + state;
+  txt.textContent = state === 'saved' ? 'Saved' : state === 'saving' ? 'Saving...' : 'Unsaved';
+}
+
+// ===== FIND & REPLACE =====
+function runFind() {
+  clearFindHighlights();
+  const query = el('fr-find').value;
+  if (!query) { el('fr-count').textContent = '–'; findMatches = []; findCurrent = -1; return; }
+  
+  const caseSensitive = el('fr-case').checked;
+  const wholeWord = el('fr-word').checked;
+  const useRegex = el('fr-regex').checked;
+  const hlAll = el('fr-hlall').checked;
+  
+  findMatches = highlightMatches(query, caseSensitive, wholeWord, useRegex, hlAll);
+  findCurrent = findMatches.length ? 0 : -1;
+  
+  el('fr-count').textContent = findMatches.length ? `1 / ${findMatches.length}` : 'No matches';
+  if (findMatches.length) scrollToMatch(0);
+}
+
+function highlightMatches(query, caseSensitive, wholeWord, useRegex, hlAll) {
+  const editor = el('editor');
+  let flags = caseSensitive ? 'g' : 'gi';
+  let pattern;
+  try {
+    pattern = useRegex ? query : query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    if (wholeWord) pattern = `\\b${pattern}\\b`;
+    const regex = new RegExp(pattern, flags);
+    
+    const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT, {
+      acceptNode: n => n.parentElement.closest('mark') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT
+    });
+    const textNodes = [];
+    let node;
+    while (node = walker.nextNode()) textNodes.push(node);
+    
+    const marks = [];
+    textNodes.forEach(tn => {
+      const text = tn.nodeValue;
+      let match;
+      regex.lastIndex = 0;
+      const parts = [];
+      let last = 0;
+      while ((match = regex.exec(text)) !== null) {
+        if (match.index > last) parts.push(document.createTextNode(text.slice(last, match.index)));
+        const m = document.createElement('mark');
+        m.className = 'find-match';
+        m.textContent = match[0];
+        if (!hlAll) m.style.background = 'transparent';
+        parts.push(m);
+        marks.push(m);
+        last = match.index + match[0].length;
+        if (match[0].length === 0) { regex.lastIndex++; break; }
+      }
+      if (parts.length) {
+        if (last < text.length) parts.push(document.createTextNode(text.slice(last)));
+        const parent = tn.parentNode;
+        parts.forEach(p => parent.insertBefore(p, tn));
+        parent.removeChild(tn);
+      }
+    });
+    return marks;
+  } catch { el('fr-count').textContent = 'Bad regex'; return []; }
+}
+
+function clearFindHighlights() {
+  const editor = el('editor');
+  editor.querySelectorAll('mark.find-match').forEach(m => {
+    m.replaceWith(document.createTextNode(m.textContent));
+  });
+  editor.normalize();
+  findMatches = [];
+}
+
+function scrollToMatch(i) {
+  if (!findMatches.length) return;
+  findMatches.forEach((m,idx) => m.classList.toggle('current', idx === i));
+  const cur = findMatches[i];
+  if (cur) cur.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  el('fr-count').textContent = `${i+1} / ${findMatches.length}`;
+}
+
+function findNav(dir) {
+  if (!findMatches.length) { runFind(); return; }
+  findCurrent = ((findCurrent + dir) + findMatches.length) % findMatches.length;
+  scrollToMatch(findCurrent);
+}
+
+function frKeyNav(e) {
+  if (e.key === 'Enter') findNav(e.shiftKey ? -1 : 1);
+  if (e.key === 'Escape') closeFind();
+}
+
+function doReplace(all) {
+  const rep = el('fr-replace').value;
+  if (all) {
+    if (!findMatches.length) runFind();
+    const count = findMatches.length;
+    findMatches.forEach(m => m.replaceWith(document.createTextNode(rep)));
+    el('editor').normalize();
+    findMatches = [];
+    findCurrent = -1;
+    el('fr-count').textContent = `Replaced ${count}`;
+    toast(`Replaced ${count} occurrence${count===1?'':'s'}`, 'ok');
+    onEditorInput();
+  } else {
+    if (findCurrent < 0 || !findMatches[findCurrent]) { runFind(); if (findMatches.length) scrollToMatch(0); return; }
+    findMatches[findCurrent].replaceWith(document.createTextNode(rep));
+    findMatches.splice(findCurrent, 1);
+    if (findMatches.length) {
+      findCurrent = Math.min(findCurrent, findMatches.length - 1);
+      scrollToMatch(findCurrent);
+    } else { el('fr-count').textContent = 'No more'; findCurrent = -1; }
+    onEditorInput();
+  }
+}
+
+function closeFind() {
+  clearFindHighlights();
+  closeModal('modal-find');
+}
+
+// ===== FILE OPERATIONS =====
+function openFile() {
+  el('file-input').click();
+}
+
+function importFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const content = e.target.result;
+    const ext = file.name.split('.').pop().toLowerCase();
+    let html = '';
+    if (ext === 'html') {
+      html = content;
+    } else if (ext === 'md') {
+      html = parseMarkdown(content);
+    } else {
+      html = '<p>' + esc(content).replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>') + '</p>';
+    }
+    newNote(html);
+    const note = getCurrentNote();
+    note.title = file.name.replace(/\.[^.]+$/, '');
+    el('note-title').value = note.title;
+    persist();
+    renderNotesList();
+    toast('File imported', 'ok');
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function exportNote(format) {
+  const note = getCurrentNote();
+  if (!note) return;
+  const title = note.title || 'untitled';
+  const ed = el('editor');
+  let content, mime, ext;
+  
+  if (format === 'txt') {
+    content = ed.innerText;
+    mime = 'text/plain';
+    ext = 'txt';
+  } else if (format === 'md') {
+    content = htmlToMarkdown(ed.innerHTML);
+    mime = 'text/markdown';
+    ext = 'md';
+  } else {
+    content = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${esc(title)}</title>
+<style>body{font-family:-apple-system,sans-serif;max-width:800px;margin:40px auto;padding:0 20px;line-height:1.7;color:#1a1a1a}h1,h2,h3{letter-spacing:-.3px}blockquote{border-left:3px solid #888;padding-left:16px;color:#666}code{background:#f0f0f0;padding:1px 5px;border-radius:3px}</style></head>
+<body><h1>${esc(title)}</h1>${ed.innerHTML}</body></html>`;
+    mime = 'text/html';
+    ext = 'html';
+  }
+  
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], { type: mime }));
+  a.download = title.replace(/[^a-z0-9_\-]/gi, '_') + '.' + ext;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast(`Exported as .${ext}`, 'ok');
+  closeDropdowns();
+}
+
+// ===== MARKDOWN PREVIEW =====
+function updatePreview() {
+  const html = el('editor').innerHTML;
+  el('preview-body').innerHTML = html; // show rich HTML directly
+  // Also render markdown cues
+  const plain = el('editor').innerText;
+  el('preview-body').innerHTML = parseMarkdown(plain);
+}
+
+function parseMarkdown(md) {
+  if (!md) return '';
+  let h = md
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/^#{6}\s+(.+)$/gm,'<h6>$1</h6>')
+    .replace(/^#{5}\s+(.+)$/gm,'<h5>$1</h5>')
+    .replace(/^#{4}\s+(.+)$/gm,'<h4>$1</h4>')
+    .replace(/^#{3}\s+(.+)$/gm,'<h3>$1</h3>')
+    .replace(/^#{2}\s+(.+)$/gm,'<h2>$1</h2>')
+    .replace(/^#{1}\s+(.+)$/gm,'<h1>$1</h1>')
+    .replace(/\*\*\*(.+?)\*\*\*/g,'<strong><em>$1</em></strong>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/~~(.+?)~~/g,'<del>$1</del>')
+    .replace(/`([^`]+)`/g,'<code>$1</code>')
+    .replace(/^\s*---+\s*$/gm,'<hr>')
+    .replace(/^\s*\[( |x)\]\s+(.+)$/gm, (_,c,t) => `<label><input type="checkbox" ${c==='x'?'checked':''} disabled> ${t}</label>`)
+    .replace(/^>\s+(.+)$/gm,'<blockquote>$1</blockquote>')
+    .replace(/^\s*[-*+]\s+(.+)$/gm,'<li>$1</li>')
+    .replace(/^\s*\d+\.\s+(.+)$/gm,'<li>$1</li>')
+    .replace(/(<li>.*<\/li>\n?)+/g, m => `<ul>${m}</ul>`)
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank">$1</a>')
+    .replace(/\n\n/g,'</p><p>')
+    .replace(/\n/g,'<br>');
+  return '<p>' + h + '</p>';
+}
+
+function htmlToMarkdown(html) {
+  return html
+    .replace(/<h1[^>]*>(.*?)<\/h1>/gi,'# $1\n')
+    .replace(/<h2[^>]*>(.*?)<\/h2>/gi,'## $1\n')
+    .replace(/<h3[^>]*>(.*?)<\/h3>/gi,'### $1\n')
+    .replace(/<strong[^>]*>(.*?)<\/strong>/gi,'**$1**')
+    .replace(/<b[^>]*>(.*?)<\/b>/gi,'**$1**')
+    .replace(/<em[^>]*>(.*?)<\/em>/gi,'*$1*')
+    .replace(/<i[^>]*>(.*?)<\/i>/gi,'*$1*')
+    .replace(/<del[^>]*>(.*?)<\/del>/gi,'~~$1~~')
+    .replace(/<code[^>]*>(.*?)<\/code>/gi,'`$1`')
+    .replace(/<li[^>]*>(.*?)<\/li>/gi,'- $1\n')
+    .replace(/<[^>]+>/g,'')
+    .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ');
+}
+
+// ===== FILTERS & SORTING =====
+function setFilter(filter, el) {
+  state._filter = filter;
+  state._tagFilter = '';
+  document.querySelectorAll('.nav-item[data-filter],.folder-item[data-filter]').forEach(e => e.classList.remove('active'));
+  if (el) el.classList.add('active');
+  renderNotesList();
+  renderTagsCloud();
+}
+
+function setTagFilter(tag) {
+  state._tagFilter = state._tagFilter === tag ? '' : tag;
+  renderTagsCloud();
+  renderNotesList();
+}
+
+function onSearchInput(v) {
+  renderNotesList();
+}
+
+function setSortBy(v) { state._sortBy = v; renderNotesList(); }
+function toggleSortDir() {
+  state._sortDir = state._sortDir === 'desc' ? 'asc' : 'desc';
+  el('sort-dir-btn').textContent = state._sortDir === 'asc' ? '↑' : '↓';
+  renderNotesList();
+}
+
+// ===== VIEW =====
+function togglePreview() {
+  const open = !state.settings.previewOpen;
+  state.settings.previewOpen = open;
+  el('preview-pane').classList.toggle('hidden', !open);
+  el('btn-preview').classList.toggle('on', open);
+  if (open) updatePreview();
+  persist();
+}
+
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(()=>{});
+  } else {
+    document.exitFullscreen();
+  }
+}
+
+function toggleZenMode() {
+  el('app').classList.toggle('zen');
+  el('btn-zen').classList.toggle('on');
+}
+
+function zoomChange(delta) {
+  state.settings.zoom = Math.max(60, Math.min(200, state.settings.zoom + delta));
+  el('zoom-val').textContent = state.settings.zoom + '%';
+  el('set-zoom-val').textContent = state.settings.zoom + '%';
+  el('sb-zoom-txt').textContent = state.settings.zoom + '%';
+  updateEditorStyles();
+  persist();
+}
+
+function resetZoom() {
+  state.settings.zoom = 100;
+  el('zoom-val').textContent = '100%';
+  el('set-zoom-val').textContent = '100%';
+  el('sb-zoom-txt').textContent = '100%';
+  updateEditorStyles();
+  persist();
+}
+
+// ===== SETTINGS =====
+function setTheme(theme, card) {
+  state.settings.theme = theme;
+  document.body.setAttribute('data-theme', theme);
+  document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('active'));
+  if (card) card.classList.add('active');
+  persist();
+}
+
+function toggleWordWrap(v) {
+  state.settings.wordWrap = v;
+  updateEditorStyles();
+  persist();
+}
+
+function toggleSpell(v) {
+  state.settings.spellCheck = v;
+  el('editor').spellcheck = v;
+  persist();
+}
+
+function setTabSize(v) { state.settings.tabSize = parseInt(v); persist(); }
+function setDefaultFont(v) { state.settings.font = v; updateEditorStyles(); persist(); }
+function setDefaultFontSize(v) { state.settings.fontSize = parseInt(v); updateEditorStyles(); persist(); }
+function toggleAutoSave(v) { state.settings.autoSave = v; persist(); }
+function toggleSound(v) { state.settings.typewriterSound = v; if (v) initAudio(); persist(); }
+function toggleStatusBar(v) {
+  state.settings.statusBar = v;
+  const bar = el('status-bar');
+  if (getCurrentNote()) bar.classList.toggle('hidden', !v);
+  persist();
+}
+function setWordGoal(v) {
+  state.settings.wordGoal = parseInt(v) || 0;
+  updateWordGoalDisplay(getCurrentNote());
+  persist();
+}
+
+// LOCK
+function toggleLock(v) {
+  state.settings.locked = v;
+  el('pin-setup').style.display = v ? 'block' : 'none';
+  persist();
+}
+function savePin() {
+  const p = el('pin-input').value.trim();
+  if (!/^\d{4}$/.test(p)) { toast('PIN must be exactly 4 digits', 'err'); return; }
+  state.settings.pin = p;
+  persist();
+  toast('PIN saved', 'ok');
+}
+function removePin() {
+  state.settings.pin = '';
+  state.settings.locked = false;
+  el('set-lock').checked = false;
+  el('pin-setup').style.display = 'none';
+  persist();
+  toast('PIN removed', 'ok');
+}
+
+// PIN ENTRY
+function pinKey(k) {
+  if (k === 'del') { pinBuffer = pinBuffer.slice(0,-1); }
+  else if (pinBuffer.length < 4) pinBuffer += k;
+  updatePinDots();
+  if (pinBuffer.length === 4) {
+    if (pinBuffer === state.settings.pin) {
+      el('lock-screen').classList.add('hidden');
+      pinBuffer = '';
+      updatePinDots();
+    } else {
+      el('pin-error').textContent = 'Wrong PIN — try again';
+      pinBuffer = '';
+      updatePinDots();
+      setTimeout(() => { el('pin-error').textContent = ''; }, 2000);
+    }
+  }
+}
+function updatePinDots() {
+  for (let i=0;i<4;i++) el('pd'+i).classList.toggle('filled', i < pinBuffer.length);
+}
+
+// ===== WORD FREQUENCY =====
+function showWordFreq() {
+  const ed = el('editor');
+  const text = ed.innerText;
+  const words = text.toLowerCase().match(/\b[a-z]{3,}\b/g) || [];
+  const stop = new Set(['the','and','that','have','for','not','with','this','but','are','was','were','from','has','been','had','his','her','its','their','they','who','what','which','will','would','could','should','there','when','where','how','you','your','our','can','may','more','also','into','than','then','just','like','over','even','most','after','back','only','first','well','much','being','some','does','did','all','out','get','him','now','way']);
+  const freq = {};
+  words.filter(w => !stop.has(w)).forEach(w => freq[w] = (freq[w]||0)+1);
+  const sorted = Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,30);
+  const max = sorted[0]?.[1] || 1;
+  const totalWords = (text.trim().match(/\S+/g)||[]).length;
+  const uniqueWords = Object.keys(freq).length;
+  const sentences = (text.match(/[.!?]+/g)||[]).length;
+  
+  el('wf-stats').innerHTML = [
+    ['Total words', totalWords],
+    ['Unique words', uniqueWords],
+    ['Sentences', sentences],
+    ['Avg word len', totalWords ? Math.round(words.join('').length/words.length*10)/10 : 0],
+  ].map(([l,v])=>`<div style="background:var(--surface2);border-radius:var(--r);padding:10px 14px;text-align:center"><div style="font-size:20px;font-weight:700;color:var(--accent)">${v}</div><div style="font-size:10px;color:var(--tx3);margin-top:2px;text-transform:uppercase;letter-spacing:.07em">${l}</div></div>`).join('');
+  
+  el('wf-list').innerHTML = sorted.map(([w,c])=>`
+    <div class="wf-bar-row">
+      <span class="wf-word">${esc(w)}</span>
+      <div class="wf-bar"><div class="wf-fill" style="width:${Math.round(c/max*100)}%"></div></div>
+      <span class="wf-count">${c}</span>
+    </div>`).join('');
+  
+  showModal('modal-wf');
+}
+
+// ===== TEMPLATES =====
+function buildTemplateGrid() {
+  el('tmpl-grid').innerHTML = TEMPLATES.map((t,i)=>`
+    <div class="tmpl-card" onclick="useTemplate(${i})">
+      <div class="tmpl-icon">${t.icon}</div>
+      <div class="tmpl-name">${t.name}</div>
+      <div class="tmpl-desc">${t.desc}</div>
+    </div>`).join('');
+}
+
+function useTemplate(i) {
+  const t = TEMPLATES[i];
+  newNote(t.html);
+  const note = getCurrentNote();
+  if (note) { note.title = t.name + ' — ' + fmtDate(); el('note-title').value = note.title; }
+  persist();
+  closeModal('modal-templates');
+}
+
+// ===== FOLDERS =====
+function createFolder() {
+  const name = el('folder-name-input').value.trim();
+  if (!name) return;
+  if (state.folders.includes(name)) { toast('Folder already exists', 'warn'); return; }
+  state.folders.push(name);
+  el('folder-name-input').value = '';
+  persist();
+  renderFoldersList();
+  closeModal('modal-folder');
+  toast('Folder created', 'ok');
+}
+
+function removeFolder(name) {
+  if (!confirm(`Remove folder "${name}"? Notes in it will become unassigned.`)) return;
+  state.folders = state.folders.filter(f => f !== name);
+  state.notes.forEach(n => { if (n.folder === name) n.folder = ''; });
+  persist();
+  renderFoldersList();
+  renderNotesList();
+}
+
+// ===== NOTE PROPERTIES MODAL =====
+function showModal(id) {
+  if (id === 'modal-props') populatePropsModal();
+  if (id === 'modal-settings') populateSettingsModal();
+  el(id).classList.remove('hidden');
+}
+
+function populatePropsModal() {
+  const note = getCurrentNote();
+  if (!note) return;
+  
+  // Folder select
+  const fs = el('prop-folder');
+  fs.innerHTML = state.folders.map(f => `<option value="${esc(f)}" ${note.folder===f?'selected':''}>${esc(f)}</option>`).join('');
+  
+  // Tags
+  const tw = el('tags-wrap');
+  const existingTags = tw.querySelectorAll('.tag-item');
+  existingTags.forEach(t => t.remove());
+  note.tags.forEach(tag => addTagChip(tag));
+  
+  // Colors
+  const cr = el('note-colors');
+  cr.innerHTML = NOTE_COLORS.map(c => `<div class="note-color-dot${note.color===c?' active':''}" style="background:${c||'var(--surface3)'};border:${!c?'2px dashed var(--border)':''}" onclick="selectNoteColor('${c}',this)" title="${c||'None'}"></div>`).join('');
+  
+  // Word goal
+  el('prop-wordgoal').value = note.wordGoal || '';
+  el('prop-pin').checked = note.pinned;
+  el('prop-fav').checked = note.favorite;
+}
+
+function addTagChip(tag) {
+  const chip = document.createElement('span');
+  chip.className = 'tag-item';
+  chip.innerHTML = `${esc(tag)} <span class="tag-rm" onclick="removeTagChip(this,'${esc(tag)}')">×</span>`;
+  chip.dataset.tag = tag;
+  const input = el('tag-input');
+  el('tags-wrap').insertBefore(chip, input);
+}
+
+function removeTagChip(rmBtn, tag) {
+  rmBtn.parentElement.remove();
+}
+
+function tagKeydown(e) {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    const v = el('tag-input').value.trim().replace(/,/g,'');
+    if (v) { addTagChip(v); el('tag-input').value = ''; }
+  }
+}
+
+function selectNoteColor(c, el) {
+  el.closest('#note-colors').querySelectorAll('.note-color-dot').forEach(d => d.classList.remove('active'));
+  el.classList.add('active');
+  el.dataset.selectedColor = c;
+}
+
+function saveProps() {
+  const note = getCurrentNote();
+  if (!note) return;
+  note.folder = el('prop-folder').value;
+  note.tags = [...el('tags-wrap').querySelectorAll('.tag-item')].map(c => c.dataset.tag).filter(Boolean);
+  const selColor = el('note-colors').querySelector('.note-color-dot.active');
+  if (selColor) note.color = selColor.dataset.selectedColor !== undefined ? selColor.dataset.selectedColor : selColor.style.background;
+  note.wordGoal = parseInt(el('prop-wordgoal').value) || 0;
+  note.pinned = el('prop-pin').checked;
+  note.favorite = el('prop-fav').checked;
+  persist();
+  updateNoteMetaBar(note);
+  updateWordGoalDisplay(note);
+  renderNotesList();
+  renderFoldersList();
+  renderTagsCloud();
+  updateCounts();
+  closeModal('modal-props');
+  toast('Properties saved', 'ok');
+}
+
+// ===== SETTINGS MODAL =====
+function populateSettingsModal() {
+  const s = state.settings;
+  el('set-wrap').checked = s.wordWrap;
+  el('set-spell').checked = s.spellCheck;
+  el('set-tabsize').value = s.tabSize;
+  el('set-font').value = s.font;
+  el('set-fontsize').value = s.fontSize;
+  el('set-zoom-val').textContent = s.zoom + '%';
+  el('set-statusbar').checked = s.statusBar;
+  el('set-autosave').checked = s.autoSave;
+  el('set-sound').checked = s.typewriterSound;
+  el('set-wordgoal').value = s.wordGoal || 0;
+  el('set-lock').checked = s.locked;
+  el('pin-setup').style.display = s.locked ? 'block' : 'none';
+  
+  // Theme cards
+  document.querySelectorAll('.theme-card').forEach(c => c.classList.toggle('active', c.dataset.theme === s.theme));
+  
+  // Streak
+  updateStreakDisplay();
+}
+
+function switchSettingsTab(tab, btn) {
+  document.querySelectorAll('.settings-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.st-tab').forEach(b => b.classList.remove('active'));
+  el('sp-' + tab).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ===== WRITING STREAK =====
+function updateStreak() {
+  const today = new Date().toDateString();
+  const yesterday = new Date(Date.now() - 86400000).toDateString();
+  const s = state.settings;
+  if (s.streakDate === today) return; // already counted today
+  if (s.streakDate === yesterday) s.streakCount++;
+  else if (s.streakDate !== today) s.streakCount = 1;
+  s.streakDate = today;
+  persist();
+}
+
+function updateStreakDisplay() {
+  const s = state.settings;
+  const count = s.streakCount || 0;
+  el('streak-display').textContent = count ? `🔥 ${count}-day streak — last wrote ${timeAgo(new Date(s.streakDate).getTime())}` : 'No streak yet — write today to start one!';
+}
+
+// ===== SOUND =====
+function initAudio() {
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch {}
+  }
+}
+
+function playClick() {
+  if (!audioCtx) return;
+  try {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    const f = 800 + Math.random() * 400;
+    osc.frequency.value = f;
+    gain.gain.setValueAtTime(.04, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+    osc.start(audioCtx.currentTime);
+    osc.stop(audioCtx.currentTime + 0.05);
+  } catch {}
+}
+
+// ===== MODALS =====
+function closeModal(id) {
+  el(id).classList.add('hidden');
+  if (id === 'modal-find') clearFindHighlights();
+}
+
+function toggleDropdown(id) {
+  const dd = el(id);
+  const wasOpen = dd.classList.contains('open');
+  closeDropdowns();
+  if (!wasOpen) dd.classList.add('open');
+}
+
+function closeDropdowns() {
+  document.querySelectorAll('.tb-dropdown.open').forEach(d => d.classList.remove('open'));
+}
+
+function toggleSection(hdr) {
+  hdr.classList.toggle('open');
+  hdr.nextElementSibling.classList.toggle('open');
+}
+
+// ===== SIDEBAR RESIZE =====
+function initResize() {
+  const handle = el('resize-handle');
+  let startX, startW;
+  handle.addEventListener('mousedown', e => {
+    startX = e.clientX;
+    startW = el('sidebar').offsetWidth;
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', () => document.removeEventListener('mousemove', onMove), { once: true });
+  });
+  function onMove(e) {
+    const w = Math.max(180, Math.min(400, startW + e.clientX - startX));
+    el('sidebar').style.width = w + 'px';
+  }
+}
+
+// ===== UTILITIES =====
+function el(id) { return document.getElementById(id); }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmtDate(d = new Date()) { return d.toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' }); }
+
+function timeAgo(ts) {
+  const diff = Date.now() - ts;
+  if (diff < 60000) return 'just now';
+  if (diff < 3600000) return Math.floor(diff/60000) + 'm ago';
+  if (diff < 86400000) return Math.floor(diff/3600000) + 'h ago';
+  if (diff < 604800000) return Math.floor(diff/86400000) + 'd ago';
+  return new Date(ts).toLocaleDateString('en-US', { month:'short', day:'numeric' });
+}
+
+function toast(msg, type = 'ok') {
+  const t = el('toast');
+  const icons = { ok:'✓', warn:'⚠', err:'✕', info:'ℹ' };
+  t.innerHTML = `<span>${icons[type] || '✓'}</span> ${esc(msg)}`;
+  t.className = 'show ' + type;
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.className = '', 3000);
+}
+
+function clearAll() {
+  localStorage.removeItem(STORAGE_KEY);
+  location.reload();
+}
+
+// ===== KEYBOARD SHORTCUTS =====
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey || e.metaKey) {
+    switch(e.key.toLowerCase()) {
+      case 'n': if (!e.shiftKey) { e.preventDefault(); newNote(); } break;
+      case 's': e.preventDefault(); saveNote(); break;
+      case 'o': e.preventDefault(); openFile(); break;
+      case 'f': e.preventDefault(); showModal('modal-find'); setTimeout(()=>el('fr-find')?.focus(),100); break;
+      case 'p': e.preventDefault(); togglePreview(); break;
+      case 'z': if (e.shiftKey) { e.preventDefault(); toggleZenMode(); } break;
+    }
+  }
+  if (e.key === 'F11') { e.preventDefault(); toggleFullscreen(); }
+  if (e.key === 'Escape') {
+    closeDropdowns();
+    document.querySelectorAll('.modal-overlay:not(.hidden)').forEach(m => {
+      if (m.id === 'modal-find') closeFind();
+      else m.classList.add('hidden');
+    });
+  }
+});
+
+// ===== GLOBAL CLICK =====
+document.addEventListener('click', e => {
+  if (!e.target.closest('.tb-dropdown')) closeDropdowns();
+  if (e.target.classList.contains('modal-overlay')) {
+    const id = e.target.id;
+    if (id === 'modal-find') closeFind();
+    else closeModal(id);
+  }
+});
+
+// Selection change → update format buttons
+document.addEventListener('selectionchange', () => {
+  if (document.activeElement === el('editor')) {
+    updateFormatButtons();
+    updateStatusBar();
+  }
+});
+
+// ===== INIT =====
+function init() {
+  // Lock screen
+  if (state.settings.locked && state.settings.pin) {
+    el('lock-screen').classList.remove('hidden');
+  }
+  
+  // Apply theme
+  document.body.setAttribute('data-theme', state.settings.theme || 'dark');
+  
+  // Init state defaults
+  state._filter = state._filter || 'all';
+  state._sortBy = state._sortBy || 'modified';
+  state._sortDir = state._sortDir || 'desc';
+  
+  // Render sidebar
+  renderFoldersList();
+  renderTagsCloud();
+  renderNotesList();
+  updateCounts();
+  buildTemplateGrid();
+  
+  // Update toolbar selectors
+  el('sel-font').value = state.settings.font || 'instrument';
+  el('sel-size').value = state.settings.fontSize || 15;
+  el('zoom-val').textContent = (state.settings.zoom || 100) + '%';
+  
+  // Load last note
+  if (state.settings.currentNoteId) {
+    const note = getNoteById(state.settings.currentNoteId);
+    if (note && !note.deleted) { selectNote(note.id); }
+    else { showEmptyState(true); }
+  } else {
+    showEmptyState(true);
+    // If no notes at all, create a welcome note
+    if (state.notes.length === 0) {
+      setTimeout(() => {
+        newNote(`<h1>Welcome to NoteFlow ✍️</h1><p>This is your full-featured notepad. Here's a quick overview of what you can do:</p><h2>📝 Writing</h2><ul><li>Rich text editing — <strong>bold</strong>, <em>italic</em>, <u>underline</u>, highlights</li><li>Multiple fonts, sizes, and colors</li><li>Lists, headings, blockquotes, code blocks</li></ul><h2>📂 Organization</h2><ul><li>Create <strong>folders</strong> and add <strong>tags</strong> to notes</li><li>Pin important notes, mark favorites, archive or trash</li><li>Sort and search across all your notes</li></ul><h2>🔍 Find &amp; Replace</h2><ul><li>Ctrl+F to open — supports case, whole-word, and regex search</li><li>Highlight all matches, navigate with ↑ ↓</li></ul><h2>📤 Export</h2><ul><li>Export any note as <code>.txt</code>, <code>.md</code>, or <code>.html</code></li><li>Import text files directly</li></ul><h2>⚙ Settings</h2><p>Click the ⚙ gear to change theme, font, auto-save, typewriter sounds, word goals, and more.</p><p>Happy writing! 🚀</p>`);
+        const note = getCurrentNote();
+        if (note) { note.title = 'Welcome to NoteFlow'; el('note-title').value = note.title; saveNote(); }
+      }, 100);
+    }
+  }
+  
+  // Status bar visibility
+  if (state.settings.statusBar && state.settings.currentNoteId) {
+    el('status-bar').classList.remove('hidden');
+  }
+  
+  // Preview pane
+  if (state.settings.previewOpen) {
+    el('preview-pane').classList.remove('hidden');
+    el('btn-preview').classList.add('on');
+  }
+  
+  // Sidebar resize
+  initResize();
+  
+  // Mobile sidebar toggle
+  document.querySelector('.app-logo')?.addEventListener('click', () => {
+    if (window.innerWidth <= 680) el('sidebar').classList.toggle('mobile-open');
+  });
+  
+  // Auto-save sound init on first interaction
+  document.addEventListener('keydown', () => {
+    if (state.settings.typewriterSound && !audioCtx) initAudio();
+  }, { once: true });
+}
+
+init();
+</script>
+</body>
+</html>
